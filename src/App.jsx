@@ -904,7 +904,7 @@ function App() {
     return { ...info, duration };
   }, []);
 
-  const applyMmdMotionUrl = useCallback(async (url, primaryHint) => {
+  const applyMmdMotionUrl = useCallback(async (url, primaryHint, manualLoopCount = null) => {
     if (!url) {
       console.log('[App] applyMmdMotionUrl: no url provided');
       return;
@@ -917,19 +917,27 @@ function App() {
     const isPrimary = url === primaryUrl;
     const mode = isPrimary ? 'primary' : 'variant';
 
-    // ループ回数を決定
-    const loopCount = isPrimary
-      ? randomBetween(2, 3)
-      : randomBetween(1, 2);
-
-    console.log(`[MMD] Motion "${url}" will play ${loopCount} loops`);
+    // ループ回数を決定（手動モードの場合は指定された回数を使用）
+    let loopCount;
+    if (manualLoopCount !== null) {
+      // 手動モード：指定された回数を使用（無限ループは-1、それ以外は指定値）
+      loopCount = manualLoopCount === -1 ? 999999 : manualLoopCount;
+      console.log(`[MMD Manual] Motion "${url}" will play ${manualLoopCount === -1 ? 'infinite' : manualLoopCount} loops`);
+    } else {
+      // 自動モード：ランダムな回数を決定
+      loopCount = isPrimary
+        ? randomBetween(2, 3)
+        : randomBetween(1, 2);
+      console.log(`[MMD Auto] Motion "${url}" will play ${loopCount} loops`);
+    }
 
     // モーション切り替えカウントは保持する
     const currentSwitchCount = mmdFallbackRef.current.switchCount || 0;
     mmdFallbackRef.current = {
       active: url,
       mode,
-      switchCount: currentSwitchCount
+      switchCount: currentSwitchCount,
+      isManual: manualLoopCount !== null // 手動再生フラグ
     };
 
     setMmdTargetLoopCount(loopCount);
@@ -981,7 +989,7 @@ function App() {
         if (currentMotion) {
           setMmdActiveMotionUrl(null);
           await new Promise(resolve => setTimeout(resolve, 50));
-          applyMmdMotionUrl(currentMotion);
+          applyMmdMotionUrl(currentMotion, null, targetLoops);
         }
         return;
       }
@@ -991,6 +999,7 @@ function App() {
         console.log('[Manual] Target loops reached - returning to auto mode');
         setIsManualPlaying(false);
         state.manualPlayback = null;
+        state.isManual = false; // 手動再生フラグをクリア
         // 自動モードに戻る
         playMmdFallbackMotion(false);
         return;
@@ -1001,7 +1010,7 @@ function App() {
         if (currentMotion) {
           setMmdActiveMotionUrl(null);
           await new Promise(resolve => setTimeout(resolve, 50));
-          applyMmdMotionUrl(currentMotion);
+          applyMmdMotionUrl(currentMotion, null, targetLoops);
         }
         return;
       }
@@ -1181,6 +1190,11 @@ function App() {
     mmdFallbackRef.current.manualPlayback.targetLoops = targetLoops;
     mmdFallbackRef.current.manualPlayback.currentLoops = 0;
 
+    // クローン再構築のために、現在のモーションを一度クリア
+    console.log('[Manual] Clearing current motion for clone reconstruction');
+    setMmdActiveMotionUrl(null);
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     // インポートモーションの場合は、Base64からBlobを作成
     if (typeof motionData === 'object' && motionData.imported && motionData.data) {
       try {
@@ -1205,13 +1219,13 @@ function App() {
           if (extracted && extracted.resources.animations.length > 0) {
             const motionUrl = extracted.resources.animations[0].url;
             console.log('[Manual] Imported ZIP motion URL:', motionUrl);
-            applyMmdMotionUrl(motionUrl);
+            applyMmdMotionUrl(motionUrl, null, targetLoops);
           }
         } else {
           // VMDの場合は直接ObjectURLを作成
           const objectURL = URL.createObjectURL(file);
           console.log('[Manual] Imported VMD motion URL:', objectURL);
-          applyMmdMotionUrl(objectURL);
+          applyMmdMotionUrl(objectURL, null, targetLoops);
         }
       } catch (error) {
         console.error('[Manual] Failed to convert imported motion:', error);
@@ -1220,7 +1234,7 @@ function App() {
     } else {
       // 通常のモーション（URLを直接使用）
       const motionUrl = typeof motionData === 'string' ? motionData : motionData.url;
-      applyMmdMotionUrl(motionUrl);
+      applyMmdMotionUrl(motionUrl, null, targetLoops);
     }
   }, [applyMmdMotionUrl]);
 
