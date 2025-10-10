@@ -320,6 +320,9 @@ const AboutModal = ({ isOpen, onClose }) => {
                     <li>音街ウナ公式モーション © MTK INTERNET Co., Ltd. - 商用利用についてはガイドライン参照
                       <br/><a href="https://otomachiuna.jp/" target="_blank" rel="noopener noreferrer" style={{ color: '#4a9eff', marginLeft: '20px' }}>公式サイト</a>
                     </li>
+                    <li>むつごろう様 - ぼんやり待ちループ、ご機嫌ループ、会話モーション等
+                      <br/><a href="https://3d.nicovideo.jp/users/2603791" target="_blank" rel="noopener noreferrer" style={{ color: '#4a9eff', marginLeft: '20px' }}>ニコニ立体</a>
+                    </li>
                     <li>各種MMDモーション作成者様 - 各モーションは個別の利用規約に従います</li>
                   </ul>
                   <p style={{ fontSize: '11px', color: '#aaa', marginTop: '8px' }}>

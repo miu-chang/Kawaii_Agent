@@ -688,6 +688,8 @@ Copyright 2025 miu-chang (miu sekiguchi). All rights reserved.
 **MMDモーション**
 - 音街ウナ公式モーション © MTK INTERNET Co., Ltd. - 商用利用についてはガイドライン参照
   - 公式サイト: https://otomachiuna.jp/
+- むつごろう様 - ぼんやり待ちループ、ご機嫌ループ、会話モーション等
+  - ニコニ立体: https://3d.nicovideo.jp/users/2603791
 - 様々なMMDモーション作成者様の作品
 - 17 VMDファイル収録
 - 各モーションは個別の利用規約に従います
@@ -1462,6 +1464,8 @@ Full license texts available in application under Settings → About → License
 **MMD Motions**
 - Otomachi Una Official Motion © MTK INTERNET Co., Ltd. - See guidelines for commercial use
   - Official Site: https://otomachiuna.jp/
+- Mutsugoro - Idle loops, conversation motions, etc.
+  - Niconico 3D: https://3d.nicovideo.jp/users/2603791
 - Various MMD motion creators' works
 - 17 VMD files included
 - Each motion follows individual terms of use
@@ -2236,6 +2240,8 @@ Copyright 2025 miu-chang (miu sekiguchi). All rights reserved.
 **MMD动作**
 - 音街宇奈官方动作 © MTK INTERNET Co., Ltd. - 商业使用请参考指南
   - 官方网站: https://otomachiuna.jp/
+- Mutsugoro - 待机循环、对话动作等
+  - Niconico 3D: https://3d.nicovideo.jp/users/2603791
 - 各种MMD动作创作者的作品
 - 包含17个VMD文件
 - 每个动作遵循各自的使用条款
