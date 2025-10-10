@@ -1,0 +1,363 @@
+import OpenAI from 'openai';
+
+class AIService {
+  constructor() {
+    this.openai = null;
+    this.isReady = false;
+    this.conversationHistory = [];
+    this.maxHistoryLength = 20; // 最大20件の会話を記憶
+    this.systemPrompt = ''; // 初期化時に設定
+    this.model = 'gpt-4.1-mini';
+  }
+
+  async initialize(apiKey, systemPrompt, onProgress) {
+    if (this.isReady) return;
+
+    try {
+      if (onProgress) {
+        onProgress({ text: 'OpenAI APIに接続中...' });
+      }
+
+      this.openai = new OpenAI({
+        apiKey: apiKey,
+        dangerouslyAllowBrowser: true // Electron環境では必要
+      });
+
+      // システムプロンプトを設定
+      this.systemPrompt = systemPrompt || 'あなたは可愛いデスクトップアシスタントです。';
+
+      this.isReady = true;
+      console.log('AI Service ready with OpenAI!');
+      console.log('Model:', this.model);
+      console.log('System Prompt:', this.systemPrompt);
+
+      // ローカルストレージから会話履歴を復元
+      this.loadConversationHistory();
+
+    } catch (error) {
+      console.error('Failed to initialize AI:', error);
+      throw error;
+    }
+  }
+
+  async chat(message, onStream, options = {}) {
+    if (!this.isReady) {
+      throw new Error('AI Service not initialized');
+    }
+
+    try {
+      const {
+        model = this.model,
+        temperature = undefined,
+        systemPrompt = this.systemPrompt,
+        saveToHistory = true
+      } = options;
+
+      // 会話履歴に追加
+      if (saveToHistory) {
+        this.conversationHistory.push({
+          role: 'user',
+          content: message
+        });
+
+        // 履歴が長すぎる場合は古いものを削除
+        if (this.conversationHistory.length > this.maxHistoryLength) {
+          this.conversationHistory = this.conversationHistory.slice(-this.maxHistoryLength);
+        }
+      }
+
+      // メッセージ配列を構築
+      const messages = [
+        {
+          role: 'system',
+          content: systemPrompt
+        },
+        ...(saveToHistory ? this.conversationHistory : [{ role: 'user', content: message }])
+      ];
+
+      // OpenAI APIを呼び出し（ストリーミング）
+      const apiParams = {
+        model: model,
+        messages: messages,
+        stream: true,
+      };
+
+      // temperatureが指定されている場合のみ追加（GPT-4.1などで使用）
+      if (temperature !== undefined) {
+        apiParams.temperature = temperature;
+      }
+
+      const stream = await this.openai.chat.completions.create(apiParams);
+
+      let fullResponse = '';
+
+      // ストリーミングレスポンスを処理
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content || '';
+        if (content) {
+          fullResponse += content;
+          if (onStream) {
+            onStream(content, fullResponse);
+          }
+        }
+      }
+
+      // アシスタントの返答を履歴に追加
+      if (saveToHistory) {
+        this.conversationHistory.push({
+          role: 'assistant',
+          content: fullResponse
+        });
+
+        // ローカルストレージに保存
+        this.saveConversationHistory();
+      }
+
+      return fullResponse;
+
+    } catch (error) {
+      console.error('Chat error:', error);
+      throw error;
+    }
+  }
+
+  // ツール（Function calling）付きでチャット
+  async chatWithTools(message, tools, onStream) {
+    if (!this.isReady) {
+      throw new Error('AI Service not initialized');
+    }
+
+    try {
+      // 会話履歴に追加
+      this.conversationHistory.push({
+        role: 'user',
+        content: message
+      });
+
+      // 履歴が長すぎる場合は古いものを削除
+      if (this.conversationHistory.length > this.maxHistoryLength) {
+        this.conversationHistory = this.conversationHistory.slice(-this.maxHistoryLength);
+      }
+
+      // メッセージ配列を構築
+      const messages = [
+        {
+          role: 'system',
+          content: this.systemPrompt
+        },
+        ...this.conversationHistory
+      ];
+
+      // OpenAI APIを呼び出し（ツール付き）
+      const response = await this.openai.chat.completions.create({
+        model: this.model,
+        messages: messages,
+        tools: tools,
+        tool_choice: 'auto',
+      });
+
+      const assistantMessage = response.choices[0].message;
+
+      // ツール呼び出しがあるか確認
+      if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
+        // assistantメッセージ（tool_callsを含む）を履歴に追加
+        this.conversationHistory.push({
+          role: 'assistant',
+          content: assistantMessage.content || null,
+          tool_calls: assistantMessage.tool_calls
+        });
+
+        return {
+          type: 'tool_calls',
+          tool_calls: assistantMessage.tool_calls,
+          message: assistantMessage
+        };
+      }
+
+      // 通常のテキスト応答
+      const fullResponse = assistantMessage.content || '';
+
+      // アシスタントの返答を履歴に追加
+      this.conversationHistory.push({
+        role: 'assistant',
+        content: fullResponse
+      });
+
+      // ローカルストレージに保存
+      this.saveConversationHistory();
+
+      if (onStream) {
+        onStream(fullResponse, fullResponse);
+      }
+
+      return {
+        type: 'text',
+        content: fullResponse
+      };
+
+    } catch (error) {
+      console.error('Chat with tools error:', error);
+      throw error;
+    }
+  }
+
+  // ツール実行結果を追加して再度チャット
+  async continueWithToolResult(toolCallId, toolName, toolResult, onStream) {
+    try {
+      // ツールの実行結果を会話履歴に追加
+      this.conversationHistory.push({
+        role: 'tool',
+        tool_call_id: toolCallId,
+        name: toolName,
+        content: JSON.stringify(toolResult)
+      });
+
+      // メッセージ配列を構築
+      const messages = [
+        {
+          role: 'system',
+          content: this.systemPrompt
+        },
+        ...this.conversationHistory
+      ];
+
+      // 再度APIを呼び出し
+      const response = await this.openai.chat.completions.create({
+        model: this.model,
+        messages: messages,
+      });
+
+      const fullResponse = response.choices[0].message.content || '';
+
+      // アシスタントの返答を履歴に追加
+      this.conversationHistory.push({
+        role: 'assistant',
+        content: fullResponse
+      });
+
+      // ローカルストレージに保存
+      this.saveConversationHistory();
+
+      if (onStream) {
+        onStream(fullResponse, fullResponse);
+      }
+
+      return fullResponse;
+
+    } catch (error) {
+      console.error('Continue with tool result error:', error);
+      throw error;
+    }
+  }
+
+  // 会話履歴をローカルストレージに保存
+  saveConversationHistory() {
+    try {
+      localStorage.setItem('conversationHistory', JSON.stringify(this.conversationHistory));
+    } catch (error) {
+      console.error('Failed to save conversation history:', error);
+    }
+  }
+
+  // 会話履歴をローカルストレージから読み込み
+  loadConversationHistory() {
+    try {
+      const saved = localStorage.getItem('conversationHistory');
+      if (saved) {
+        this.conversationHistory = JSON.parse(saved);
+        console.log('Loaded conversation history:', this.conversationHistory.length, 'messages');
+      }
+    } catch (error) {
+      console.error('Failed to load conversation history:', error);
+      this.conversationHistory = [];
+    }
+  }
+
+  // 会話履歴をクリア
+  clearHistory() {
+    this.conversationHistory = [];
+    localStorage.removeItem('conversationHistory');
+  }
+
+  getConversationHistory() {
+    return [...this.conversationHistory];
+  }
+
+  // 挨拶検出
+  detectGreeting(text) {
+    const lowerText = text.toLowerCase();
+    const greetings = [
+      'こんにちは', 'こんばんは', 'おはよう', 'やあ', 'ハロー',
+      'hello', 'hi', 'hey', 'よろしく', 'はじめまして'
+    ];
+
+    return greetings.some(greeting => lowerText.includes(greeting));
+  }
+
+  // 感情分析（改良版）
+  analyzeEmotion(text) {
+    const lowerText = text.toLowerCase();
+
+    const emotions = {
+      happy: [
+        '嬉しい', '楽しい', 'happy', 'joy', '喜', '笑',
+        'わーい', 'やった', 'よかった', '素敵', '素晴らしい',
+        'ありがとう', '感謝', 'にこにこ', '✨', '💖'
+      ],
+      sad: [
+        '悲しい', '寂しい', 'sad', 'sorry', '残念',
+        'つらい', '泣', 'ごめん', '申し訳', '涙'
+      ],
+      angry: [
+        '怒', 'angry', 'mad', 'イライラ', 'むかつ',
+        'ふざけ', 'やめ', 'だめ', '許さ'
+      ],
+      surprised: [
+        '驚', '!?', 'wow', 'amazing', 'びっくり',
+        'すごい', 'まさか', 'えっ', 'おお', '本当'
+      ],
+      thinking: [
+        '考え', '思', 'うーん', 'えーと', 'そうですね',
+        'かも', 'でしょう', 'だと思', 'かな'
+      ]
+    };
+
+    // 感情スコアを計算
+    const scores = {};
+    for (const [emotion, keywords] of Object.entries(emotions)) {
+      scores[emotion] = keywords.filter(keyword =>
+        lowerText.includes(keyword)
+      ).length;
+    }
+
+    // 最も高いスコアの感情を返す
+    let maxScore = 0;
+    let detectedEmotion = 'neutral';
+
+    for (const [emotion, score] of Object.entries(scores)) {
+      if (score > maxScore) {
+        maxScore = score;
+        detectedEmotion = emotion;
+      }
+    }
+
+    // 複数の感情記号がある場合の調整
+    if (text.includes('！') && text.includes('？')) {
+      return 'surprised';
+    } else if (text.includes('！') && maxScore === 0) {
+      return 'happy';
+    }
+
+    return detectedEmotion;
+  }
+
+  destroy() {
+    this.saveConversationHistory();
+    this.openai = null;
+    this.isReady = false;
+  }
+}
+
+// シングルトンインスタンス
+const aiService = new AIService();
+export default aiService;

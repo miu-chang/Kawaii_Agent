@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.DS_Store
+.env
+*.log
+
+# Large model files (use Git LFS or download separately)
+public/rvc-models/*.pth
+rvc/models/*.pt
+public/vosk-model-small-ja-0.22.tar.gz
+
+# Embedded git repositories
+rvc/rvc-webui/
+temp-bvh2vrma/
+vits-umamusume/
+vits-umamusume-clean/

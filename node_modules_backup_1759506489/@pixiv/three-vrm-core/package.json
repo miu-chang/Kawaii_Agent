@@ -1,0 +1,64 @@
+{
+  "name": "@pixiv/three-vrm-core",
+  "version": "3.4.2",
+  "description": "The implementation of core features of VRM, for @pixiv/three-vrm",
+  "license": "MIT",
+  "author": "pixiv",
+  "files": [
+    "/lib/",
+    "/types/",
+    "LICENSE"
+  ],
+  "type": "module",
+  "main": "lib/three-vrm-core.module.js",
+  "types": "types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "import": "./lib/three-vrm-core.module.js",
+      "require": "./lib/three-vrm-core.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pixiv/three-vrm.git",
+    "directory": "packages/three-vrm-core"
+  },
+  "scripts": {
+    "version": "yarn clean && yarn build",
+    "dev": "cross-env SERVE=1 yarn build-dev",
+    "clean": "rimraf docs/ lib/ types/",
+    "build": "yarn build-dev && yarn build-prod && yarn build-types",
+    "build-js": "node ../../bin/build.mjs",
+    "build-dev": "cross-env NODE_ENV=development yarn build-js",
+    "build-prod": "cross-env NODE_ENV=production yarn build-js",
+    "build-types": "tsc --project ./tsconfig.build-types.json",
+    "docs-legacy": "typedoc --plugin ../../typedoc-redirect-legacy-docs-plugin.mjs",
+    "test": "jest",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"  && yarn lint-examples &&  prettier \"src/**/*.{ts,tsx}\" --check",
+    "lint-examples": "eslint \"examples/**/*.{js,html}\" --rule \"padded-blocks: error\"",
+    "lint-fix": "eslint \"src/**/*.{ts,tsx}\" --fix && eslint \"examples/**/*.{js,html}\" --fix &&  prettier \"src/**/*.{ts,tsx}\" --write"
+  },
+  "lint-staged": {
+    "./src/**/*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "./examples/**/*.{js,html}": [
+      "eslint --fix --rule \"padded-blocks: error\""
+    ]
+  },
+  "dependencies": {
+    "@pixiv/types-vrm-0.0": "3.4.2",
+    "@pixiv/types-vrmc-vrm-1.0": "3.4.2"
+  },
+  "devDependencies": {
+    "@types/three": "^0.177.0",
+    "three": "^0.177.0"
+  },
+  "peerDependencies": {
+    "three": ">=0.137"
+  },
+  "gitHead": "d20d8cd0ec2c18e8226a9fc45a524bb16646d86e"
+}

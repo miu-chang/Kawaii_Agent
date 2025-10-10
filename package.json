@@ -1,0 +1,76 @@
+{
+  "name": "kawaii-agent",
+  "version": "1.0.0",
+  "description": "Kawaii Agent - Your AI Desktop Companion",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "npx webpack --mode development && electron .",
+    "dev": "npx webpack --watch",
+    "build": "npx webpack --mode production",
+    "build:rvc": "cd rvc && ./build.sh",
+    "build:all": "npm run build && npm run build:rvc",
+    "electron": "electron .",
+    "dist": "npm run build:all && electron-builder"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@babel/core": "^7.28.4",
+    "@babel/preset-env": "^7.28.3",
+    "@babel/preset-react": "^7.27.1",
+    "babel-loader": "^10.0.0",
+    "copy-webpack-plugin": "^13.0.1",
+    "css-loader": "^7.1.2",
+    "electron": "^38.2.0",
+    "electron-builder": "^26.0.12",
+    "html-webpack-plugin": "^5.6.4",
+    "style-loader": "^4.0.0",
+    "webpack": "^5.102.0",
+    "webpack-cli": "^6.0.1",
+    "webpack-dev-server": "^5.2.2"
+  },
+  "dependencies": {
+    "@gradio/client": "^1.19.1",
+    "@mlc-ai/web-llm": "^0.2.79",
+    "@pixiv/three-vrm": "^3.4.2",
+    "@react-three/drei": "^10.7.6",
+    "@react-three/fiber": "^9.3.0",
+    "@ricky0123/vad-web": "^0.0.28",
+    "ammojs-typed": "^1.0.6",
+    "dotenv": "^17.2.3",
+    "fflate": "^0.8.2",
+    "meyda": "^5.6.3",
+    "mmd-parser": "^1.0.4",
+    "onnxruntime-web": "1.14.0",
+    "openai": "^6.1.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "replicate": "^1.2.0",
+    "three": "0.170.0",
+    "vosk-browser": "^0.0.8"
+  },
+  "build": {
+    "files": [
+      "dist/**/*",
+      "src/main.js",
+      "src/preload.js"
+    ],
+    "extraResources": [
+      {
+        "from": "rvc/dist/rvc_convert",
+        "to": "rvc/rvc_convert"
+      },
+      {
+        "from": "public/rvc-models",
+        "to": "rvc-models"
+      }
+    ],
+    "mac": {
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "このアプリは音声入力機能のためにマイクへのアクセスを必要とします。"
+      }
+    }
+  }
+}

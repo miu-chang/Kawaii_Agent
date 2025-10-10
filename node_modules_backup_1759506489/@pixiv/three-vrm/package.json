@@ -1,0 +1,73 @@
+{
+  "name": "@pixiv/three-vrm",
+  "version": "3.4.2",
+  "description": "VRM file loader for three.js.",
+  "license": "MIT",
+  "author": "pixiv",
+  "files": [
+    "/lib/",
+    "/types/",
+    "LICENSE"
+  ],
+  "type": "module",
+  "main": "lib/three-vrm.module.js",
+  "types": "types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "import": "./lib/three-vrm.module.js",
+      "require": "./lib/three-vrm.cjs"
+    },
+    "./nodes": {
+      "types": "./types/nodes/index.d.ts",
+      "import": "./lib/nodes/index.module.js",
+      "require": "./lib/nodes/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pixiv/three-vrm.git",
+    "directory": "packages/three-vrm"
+  },
+  "scripts": {
+    "version": "yarn clean && yarn build",
+    "dev": "cross-env SERVE=1 yarn build-dev",
+    "clean": "rimraf docs/ lib/ types/",
+    "build": "yarn build-dev && yarn build-prod && yarn build-types",
+    "build-js": "node ../../bin/build.mjs",
+    "build-dev": "cross-env NODE_ENV=development yarn build-js",
+    "build-prod": "cross-env NODE_ENV=production yarn build-js",
+    "build-types": "tsc --declaration --declarationDir ./types --emitDeclarationOnly",
+    "docs-legacy": "typedoc --plugin ../../typedoc-redirect-legacy-docs-plugin.mjs",
+    "test": "echo There is no test for three-vrm",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"  && yarn lint-examples &&  prettier \"src/**/*.{ts,tsx}\" --check",
+    "lint-examples": "eslint \"examples/**/*.{js,html}\" --rule \"padded-blocks: error\"",
+    "lint-fix": "eslint \"src/**/*.{ts,tsx}\" --fix && eslint \"examples/**/*.{js,html}\" --fix &&  prettier \"src/**/*.{ts,tsx}\" --write"
+  },
+  "lint-staged": {
+    "./src/**/*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "./examples/**/*.{js,html}": [
+      "eslint --fix --rule \"padded-blocks: error\""
+    ]
+  },
+  "dependencies": {
+    "@pixiv/three-vrm-core": "3.4.2",
+    "@pixiv/three-vrm-materials-hdr-emissive-multiplier": "3.4.2",
+    "@pixiv/three-vrm-materials-mtoon": "3.4.2",
+    "@pixiv/three-vrm-materials-v0compat": "3.4.2",
+    "@pixiv/three-vrm-node-constraint": "3.4.2",
+    "@pixiv/three-vrm-springbone": "3.4.2"
+  },
+  "devDependencies": {
+    "@types/three": "^0.177.0",
+    "three": "^0.177.0"
+  },
+  "peerDependencies": {
+    "three": ">=0.137"
+  },
+  "gitHead": "d20d8cd0ec2c18e8226a9fc45a524bb16646d86e"
+}
