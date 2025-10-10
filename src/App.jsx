@@ -33,7 +33,8 @@ const ALL_IDLE_MOTIONS = [
   'typing'
 ];
 
-const PRIMARY_IDLE_MOTION = 'dwarf_idle';
+const PRIMARY_IDLE_MOTION = 'dwarf_idle'; // VRM用
+const PRIMARY_MMD_MOTION = 'ぼんやり待ちループ'; // MMD用の静かな待機モーション
 
 const IMAGE_MIME_MAP = {
   png: 'image/png',
@@ -168,7 +169,8 @@ const SHIFT_JIS_DECODER = (() => {
 const MMD_PRIMARY_KEYWORDS = ['ループ', 'ご機嫌', 'ぼんやり'];
 
 // ポーズファイル（静止ポーズ）を除外するキーワード
-const MMD_POSE_KEYWORDS = ['pose', 'ポーズ', 'ポージング', 'モデルポージング'];
+// 注意：「モデルポージング」はアニメーションなので除外しない
+const MMD_POSE_KEYWORDS = ['pose', 'turn_pose', 'turn&pose'];
 
 // インタラクション用モーションキーワード
 const MMD_TAP_KEYWORDS = ['頭かく', 'dadakko', 'chikayori'];  // タップ時（照れる、甘える）
@@ -1749,6 +1751,7 @@ function App() {
     fallbackState.active = nextKey;
     fallbackState.lastTriggered = now;
     fallbackState.mode = nextKey === PRIMARY_IDLE_MOTION ? 'primary' : 'variant';
+    fallbackState.isManual = false; // 自動再生フラグをリセット
 
     // モーションのdurationを取得して切り替えタイミングを計算
     let dwellDuration;
@@ -1812,6 +1815,12 @@ function App() {
           if (currentName && currentName !== fallbackStateRef.current.active) {
             fallbackStateRef.current.active = null;
             fallbackStateRef.current.nextSwitchAt = 0;
+            fallbackStateRef.current.isManual = false;
+          }
+
+          // 手動再生の場合は自動切り替えしない
+          if (fallbackStateRef.current.isManual) {
+            return;
           }
 
           if (fallbackStateRef.current.active && currentName === fallbackStateRef.current.active) {
@@ -4537,7 +4546,8 @@ ${assistantMessage}`,
                   active: null,
                   lastTriggered: 0,
                   nextSwitchAt: 0,
-                  mode: 'primary'
+                  mode: 'primary',
+                  isManual: false // 手動再生フラグ
                 };
 
                 playFallbackMotion().catch((error) => {
