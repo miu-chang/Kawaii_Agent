@@ -236,13 +236,6 @@ const classifyMmdAnimations = (animations = []) => {
     !petAnims.includes(anim)
   );
 
-  console.log('[App] Classified animations:', {
-    primary: primaryAnims.length,
-    variants: variants.length,
-    tap: tapAnims.length,
-    pet: petAnims.length
-  });
-
   return { primary: primaryAnims, variants, tapMotions: tapAnims, petMotions: petAnims };
 };
 

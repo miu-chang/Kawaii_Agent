@@ -105,7 +105,6 @@ class VoiceRecorder {
           if (result.text) {
             // ハルシネーションチェック
             if (this.isHallucination(result.text)) {
-              console.log('[Whisper] Hallucination detected, ignoring:', result.text);
               return; // 結果を無視
             }
 
@@ -154,18 +153,15 @@ class VoiceRecorder {
       this.onError = onError;
       this.vadAudioChunks = [];
 
-      console.log('[VAD] Initializing VAD...');
 
       this.vad = await MicVAD.new({
         modelURL: "./silero_vad_legacy.onnx",
         workletURL: "./vad.worklet.bundle.min.js",
         onSpeechStart: () => {
-          console.log('[VAD] Speech detected - recording started');
           this.vadAudioChunks = [];
           this.isListening = true;
         },
         onSpeechEnd: async (audio) => {
-          console.log('[VAD] Speech ended - processing audio');
           this.isListening = false;
 
           try {
@@ -178,7 +174,6 @@ class VoiceRecorder {
             if (result.text) {
               // ハルシネーションチェック
               if (this.isHallucination(result.text)) {
-                console.log('[VAD] Hallucination detected, ignoring:', result.text);
                 return; // 結果を無視
               }
 
@@ -196,13 +191,11 @@ class VoiceRecorder {
           }
         },
         onVADMisfire: () => {
-          console.log('[VAD] False positive detected');
           this.isListening = false;
         }
       });
 
       this.vad.start();
-      console.log('[VAD] VAD started successfully');
       return true;
     } catch (error) {
       console.error('[VAD] Error starting VAD:', error);
@@ -221,7 +214,6 @@ class VoiceRecorder {
         isConversationMode = () => false,  // 連続会話モード判定用関数
       } = options;
 
-      console.log('[VAD] Initializing VAD with wake word detection...');
 
       // Web Speech API初期化
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -238,7 +230,6 @@ class VoiceRecorder {
         modelURL: "./silero_vad_legacy.onnx",
         workletURL: "./vad.worklet.bundle.min.js",
         onSpeechStart: () => {
-          console.log('[VAD] Speech detected - starting recognition');
           this.vadAudioChunks = [];
           this.isListening = true;
 
@@ -246,7 +237,6 @@ class VoiceRecorder {
           if (recognition && onSpeechRecognition) {
             recognition.onresult = (event) => {
               const transcript = event.results[0][0].transcript;
-              console.log('[Web Speech] Recognized:', transcript);
               onSpeechRecognition(transcript);
             };
             recognition.onerror = (event) => {
@@ -260,11 +250,9 @@ class VoiceRecorder {
             };
             try {
               recognition.start();
-              console.log('[Web Speech] Started for wake word detection');
             } catch (error) {
               // 既に起動中の場合のエラーは無視
               if (error.message && error.message.includes('already started')) {
-                console.log('[Web Speech] Already running, skipping start');
               } else {
                 console.error('[Web Speech] Start error:', error);
               }
@@ -272,7 +260,6 @@ class VoiceRecorder {
           }
         },
         onSpeechEnd: async (audio) => {
-          console.log('[VAD] Speech ended');
           this.isListening = false;
 
           // Web Speech API停止
@@ -286,7 +273,6 @@ class VoiceRecorder {
 
           // 連続会話モード中のみWhisper APIを使用（高精度・有料）
           if (isConversationMode()) {
-            console.log('[VAD] Conversation mode active - using Whisper API');
             try {
               // Float32Arrayを16bit PCM WAVに変換
               const wavBlob = this.floatTo16BitPCM(audio);
@@ -296,7 +282,6 @@ class VoiceRecorder {
 
               if (result.text) {
                 if (this.isHallucination(result.text)) {
-                  console.log('[VAD] Hallucination detected, ignoring:', result.text);
                   return;
                 }
 
@@ -311,11 +296,9 @@ class VoiceRecorder {
               }
             }
           } else {
-            console.log('[VAD] Not in conversation mode - skipping Whisper API');
           }
         },
         onVADMisfire: () => {
-          console.log('[VAD] False positive detected');
           this.isListening = false;
 
           if (recognition) {
@@ -329,7 +312,6 @@ class VoiceRecorder {
       });
 
       this.vad.start();
-      console.log('[VAD] VAD started with wake word detection');
       return true;
     } catch (error) {
       console.error('[VAD] Error starting VAD:', error);
@@ -339,7 +321,6 @@ class VoiceRecorder {
 
   stopVAD() {
     if (this.vad) {
-      console.log('[VAD] Stopping VAD...');
       this.vad.pause();
       this.vad.destroy();
       this.vad = null;
@@ -363,7 +344,6 @@ class VoiceRecorder {
         isConversationMode = () => false,  // 連続会話モード判定用関数
       } = options;
 
-      console.log('[VAD] Initializing VAD with voice print verification...');
 
       this.vad = await MicVAD.new({
         modelURL: "./silero_vad_legacy.onnx",
@@ -374,7 +354,6 @@ class VoiceRecorder {
           this.isListening = true;
         },
         onSpeechEnd: async (audio) => {
-          console.log('[VAD] Speech ended');
           this.isListening = false;
 
           // 声紋認証チェック（登録済みの場合のみ）
@@ -416,7 +395,6 @@ class VoiceRecorder {
 
             if (result.text) {
               if (this.isHallucination(result.text)) {
-                console.log('[Whisper] Hallucination detected, ignoring:', result.text);
                 return;
               }
 
@@ -442,13 +420,11 @@ class VoiceRecorder {
           }
         },
         onVADMisfire: () => {
-          console.log('[VAD] False positive detected');
           this.isListening = false;
         }
       });
 
       this.vad.start();
-      console.log('[VAD] VAD started with voice print verification and Whisper recognition');
       return true;
     } catch (error) {
       console.error('[VAD] Error starting VAD:', error);
