@@ -686,9 +686,12 @@ Copyright 2025 miu-chang (miu sekiguchi). All rights reserved.
 - 64アニメーション収録
 
 **MMDモーション**
-- 様々なモーション作成者
+- 音街ウナ公式モーション © MTK INTERNET Co., Ltd. - 商用利用についてはガイドライン参照
+  - 公式サイト: https://otomachiuna.jp/
+- 様々なMMDモーション作成者様の作品
 - 17 VMDファイル収録
-- 各モーションに個別の利用規約
+- 各モーションは個別の利用規約に従います
+- 詳細: https://3d.nicovideo.jp/
 
 ### 開発
 
@@ -1457,9 +1460,12 @@ Full license texts available in application under Settings → About → License
 - 64 animations included
 
 **MMD Motions**
-- Various motion creators
+- Otomachi Una Official Motion © MTK INTERNET Co., Ltd. - See guidelines for commercial use
+  - Official Site: https://otomachiuna.jp/
+- Various MMD motion creators' works
 - 17 VMD files included
-- Each motion has individual terms
+- Each motion follows individual terms of use
+- Details: https://3d.nicovideo.jp/
 
 ### Development
 
@@ -2228,9 +2234,12 @@ Copyright 2025 miu-chang (miu sekiguchi). All rights reserved.
 - 包含64个动画
 
 **MMD动作**
-- 各种动作创作者
+- 音街宇奈官方动作 © MTK INTERNET Co., Ltd. - 商业使用请参考指南
+  - 官方网站: https://otomachiuna.jp/
+- 各种MMD动作创作者的作品
 - 包含17个VMD文件
-- 每个动作有单独的条款
+- 每个动作遵循各自的使用条款
+- 详情: https://3d.nicovideo.jp/
 
 ### 开发
 

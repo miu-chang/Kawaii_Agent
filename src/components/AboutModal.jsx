@@ -301,6 +301,32 @@ const AboutModal = ({ isOpen, onClose }) => {
                   </p>
                 </div>
 
+                <h4 style={{ marginTop: '24px' }}>付属モーションデータ</h4>
+                <div style={{ marginTop: '12px' }}>
+                  <p><strong>VRMAアニメーション（64種）</strong></p>
+                  <p style={{ fontSize: '11px', color: '#aaa' }}>
+                    Adobe Mixamo<br/>
+                    VRMA形式に変換して使用<br/>
+                    利用条件：個人利用・商用利用可
+                  </p>
+                </div>
+
+                <div style={{ marginTop: '16px' }}>
+                  <p><strong>MMDモーションデータ（17種）</strong></p>
+                  <p style={{ fontSize: '11px', color: '#aaa' }}>
+                    以下のモーション作成者様の作品を使用しています：
+                  </p>
+                  <ul style={{ fontSize: '11px', color: '#aaa', marginLeft: '20px', marginTop: '8px' }}>
+                    <li>音街ウナ公式モーション © MTK INTERNET Co., Ltd. - 商用利用についてはガイドライン参照
+                      <br/><a href="https://otomachiuna.jp/" target="_blank" rel="noopener noreferrer" style={{ color: '#4a9eff', marginLeft: '20px' }}>公式サイト</a>
+                    </li>
+                    <li>各種MMDモーション作成者様 - 各モーションは個別の利用規約に従います</li>
+                  </ul>
+                  <p style={{ fontSize: '11px', color: '#aaa', marginTop: '8px' }}>
+                    モーションデータの詳細は<a href="https://3d.nicovideo.jp/" target="_blank" rel="noopener noreferrer" style={{ color: '#4a9eff' }}>ニコニ立体</a>をご確認ください。
+                  </p>
+                </div>
+
                 <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#333', borderRadius: '6px' }}>
                   <p style={{ margin: 0 }}>
                     詳細なライセンス情報は、アプリケーションディレクトリ内の LICENSE ファイルをご確認ください。
