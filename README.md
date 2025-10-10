@@ -1,6 +1,66 @@
 # Kawaii Agent
 
-AI-powered desktop companion with VRM/MMD character support.
+AI搭載のデスクトップコンパニオン / AI-powered Desktop Companion / AI桌面伴侣
+
+---
+
+## 📌 重要：2つのバージョンについて / About Two Versions / 关于两个版本
+
+### 🎯 日本語
+
+このリポジトリには**2つの使い方**があります：
+
+**1. オープンソース版（Git版）**
+- このリポジトリからソースコードをビルド
+- **ライセンス不要**
+- **自分のOpenAI APIキーが必要**（有料）
+- 開発者・上級者向け
+- カスタマイズ自由
+
+**2. パッケージ版（BOOTH販売）**
+- ビルド済みアプリケーション
+- **ライセンスキーが必要**（BOOTHで購入）
+- **OpenAI APIキー不要**（バックエンド経由で提供）
+- 一般ユーザー向け
+- すぐに使える
+
+### 🎯 English
+
+This repository offers **two ways to use**:
+
+**1. Open Source Version (Git)**
+- Build from source code in this repository
+- **No license required**
+- **Your own OpenAI API key required** (paid)
+- For developers and advanced users
+- Fully customizable
+
+**2. Packaged Version (BOOTH)**
+- Pre-built application
+- **License key required** (purchase from BOOTH)
+- **No OpenAI API key needed** (provided via backend)
+- For general users
+- Ready to use
+
+### 🎯 中文
+
+本仓库提供**两种使用方式**：
+
+**1. 开源版（Git版）**
+- 从本仓库构建源代码
+- **无需许可证**
+- **需要自己的OpenAI API密钥**（付费）
+- 面向开发者和高级用户
+- 可自由定制
+
+**2. 打包版（BOOTH销售）**
+- 预构建应用程序
+- **需要许可证密钥**（从BOOTH购买）
+- **无需OpenAI API密钥**（通过后端提供）
+- 面向普通用户
+- 即开即用
+
+---
 
 ## Features
 
