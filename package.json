@@ -12,9 +12,9 @@
     "electron": "electron .",
     "dist": "npm run build:all && electron-builder"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["ai", "desktop-companion", "vrm", "mmd", "voicevox"],
+  "author": "miu-chang (miu sekiguchi) <weiyu.illustration2002@gmail.com>",
+  "license": "Proprietary",
   "type": "commonjs",
   "devDependencies": {
     "@babel/core": "^7.28.4",
@@ -53,6 +53,8 @@
     "vosk-browser": "^0.0.8"
   },
   "build": {
+    "appId": "com.miuchang.kawaiiagent",
+    "productName": "Kawaii Agent",
     "files": [
       "dist/**/*",
       "src/main.js",
@@ -69,9 +71,19 @@
       }
     ],
     "mac": {
+      "category": "public.app-category.entertainment",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
       "extendInfo": {
         "NSMicrophoneUsageDescription": "このアプリは音声入力機能のためにマイクへのアクセスを必要とします。"
-      }
+      },
+      "notarize": false
+    },
+    "win": {
+      "target": ["nsis"],
+      "icon": "build/icon.ico"
     }
   }
 }

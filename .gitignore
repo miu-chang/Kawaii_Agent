@@ -3,6 +3,10 @@ node_modules_backup_*/
 dist/
 .DS_Store
 .env
+.env.notarize
+.env.local
+.env.*.local
+!.env.notarize.example
 *.log
 
 # Large model files (use Git LFS or download separately)

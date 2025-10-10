@@ -1916,6 +1916,7 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
   const petMotionUrlsRef = useRef(petMotionUrls);
   const onMmdInteractionMotionRef = useRef(onMmdInteractionMotion);
   const onLoopCompleteRef = useRef(onLoopComplete);
+  const targetLoopCountRef = useRef(targetLoopCount);
 
   const resetMeshToInitialState = () => {
     const mesh = meshRef.current;
@@ -2352,6 +2353,7 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
     onMmdInteractionMotionRef.current = onMmdInteractionMotion;
     onLoopCompleteRef.current = onLoopComplete;
     onTapEffectRef.current = onTapEffect;
+    targetLoopCountRef.current = targetLoopCount;
   });
 
   // enablePhysicsをRefと同期
@@ -2933,10 +2935,11 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
       return;
     }
 
-    // ループカウンターをリセット
+    // ループカウンターをリセット（targetLoopsも確実に更新）
     loopCounterRef.current.currentLoops = 0;
     loopCounterRef.current.lastTime = -1;
-    console.log('[MMDModel] Loop counter reset for new motion');
+    loopCounterRef.current.targetLoops = targetLoopCountRef.current;
+    console.log('[MMDModel] Loop counter reset for new motion, targetLoops:', targetLoopCountRef.current);
 
     const loader = loaderRef.current;
     const mesh = meshRef.current;
