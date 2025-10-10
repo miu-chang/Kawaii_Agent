@@ -13,6 +13,7 @@ import { toolDefinitions, toolExecutor } from './services/tools';
 import { saveImportedMotions, loadImportedMotions, saveFavoriteMotions, loadFavoriteMotions, saveImportedModels, loadImportedModels, saveFavoriteModels, loadFavoriteModels } from './utils/indexedDB';
 import LicenseModal from './components/LicenseModal';
 import AboutModal from './components/AboutModal';
+import ConsentModal from './components/ConsentModal';
 import licenseApi from './services/licenseApi';
 import ttsModManager from './services/ttsModManager';
 
@@ -416,12 +417,24 @@ function App() {
   const [aiProgress, setAiProgress] = useState('');
   const [isLicenseModalOpen, setIsLicenseModalOpen] = useState(false);
   const [licenseInfo, setLicenseInfo] = useState(licenseApi.getLicenseInfo());
+  const [isConsentModalOpen, setIsConsentModalOpen] = useState(false);
 
-  // 起動時にライセンスチェック（APIキーがない場合のみ）
+  // 起動時に利用規約同意チェック
   useEffect(() => {
-    const savedApiKey = localStorage.getItem('openaiApiKey');
-    if (!licenseApi.hasValidLicense() && !savedApiKey) {
-      setIsLicenseModalOpen(true);
+    const termsAccepted = localStorage.getItem('termsAccepted');
+    if (!termsAccepted) {
+      setIsConsentModalOpen(true);
+    }
+  }, []);
+
+  // 起動時にライセンスチェック（APIキーがない場合のみ、利用規約同意後）
+  useEffect(() => {
+    const termsAccepted = localStorage.getItem('termsAccepted');
+    if (termsAccepted) {
+      const savedApiKey = localStorage.getItem('openaiApiKey');
+      if (!licenseApi.hasValidLicense() && !savedApiKey) {
+        setIsLicenseModalOpen(true);
+      }
     }
   }, []);
 
@@ -6681,6 +6694,12 @@ ${assistantMessage}`,
             }
           }
         }}
+      />
+
+      {/* 利用規約同意モーダル */}
+      <ConsentModal
+        isOpen={isConsentModalOpen}
+        onAccept={() => setIsConsentModalOpen(false)}
       />
 
       {/* About モーダル */}
