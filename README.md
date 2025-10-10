@@ -11,7 +11,7 @@ AI-powered desktop companion with VRM/MMD character support.
 - **Interactive physics** - Touch interactions with realistic physics response
 
 ### AI Conversation
-- **GPT-4o integration** - Natural language conversation
+- **GPT-4.1 mini integration** - Natural language conversation
 - **Emotion detection** - Automatic facial expression based on conversation
 - **Voice interaction** - Voice input/output with wake word detection
 - **Function calling** - Web search, weather, news, and more
@@ -125,7 +125,7 @@ public/
 - Three.js + React Three Fiber
 - @pixiv/three-vrm (VRM support)
 - MMDLoader (MMD support)
-- OpenAI API (GPT-4o)
+- OpenAI API (GPT-4.1 mini)
 - VOICEVOX (TTS)
 
 ## License
