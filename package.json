@@ -41,6 +41,7 @@
     "ammojs-typed": "^1.0.6",
     "dotenv": "^17.2.3",
     "fflate": "^0.8.2",
+    "jszip": "^3.10.1",
     "meyda": "^5.6.3",
     "mmd-parser": "^1.0.4",
     "onnxruntime-web": "1.14.0",

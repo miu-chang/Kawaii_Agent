@@ -72,24 +72,6 @@ const getBoneCategory = (boneName) => {
 
   const lower = boneName.toLowerCase();
 
-  // スカート（揺れもの）
-  // MMD: スカート
-  if (lower.includes('スカート') || lower.includes('skirt')) {
-    return 'skirt';
-  }
-
-  // 髪（揺れもの）
-  // VRM/MMD: 髪, hair
-  if (lower.includes('髪') || lower.includes('hair')) {
-    return 'hair';
-  }
-
-  // リボン・アクセサリー（揺れもの）
-  // MMD: リボン, ribbon
-  if (lower.includes('リボン') || lower.includes('ribbon')) {
-    return 'accessory';
-  }
-
   // 親密な部位（胸/腰/太もも/尻）
   // VRM: chest, spine, hips, upperleg
   // MMD: 上半身, 上半身2, 下半身, 腰, 胸, 胸先, 左胸, 右胸, 左胸先, 右胸先, お尻, 足（太もも部分）
@@ -639,6 +621,11 @@ function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = t
           grabStarted = true;
           isGrabbing = true;
 
+          // カーソルをgrabbingに変更
+          if (enableInteraction) {
+            gl.domElement.style.cursor = 'grabbing';
+          }
+
           // 掴むボーンを特定（hitPointから最も近いボーンを探す）
           const vrm = vrmRef.current;
           if (vrm.scene) {
@@ -706,12 +693,22 @@ function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = t
 
               // グラブインタラクションコールバックを呼ぶ
               if (enableInteraction && onInteraction) {
-                const bodyPart = getBoneCategory(grabbedBone.name);
-                onInteraction({
-                  type: 'grab',
-                  bodyPart,
-                  boneName: grabbedBone.name
-                });
+                const now = Date.now();
+                const canReact = (now - lastTapReaction.current) > 10000;
+
+                if (canReact) {
+                  // クールダウン更新
+                  lastTapReaction.current = now;
+
+                  const bodyPart = getBoneCategory(grabbedBone.name);
+                  onInteraction({
+                    type: 'grab',
+                    bodyPart,
+                    boneName: grabbedBone.name
+                  });
+                } else {
+                  console.log('[VRM Grab] Interaction ignored - cooldown active');
+                }
               }
             }
           }
@@ -778,6 +775,7 @@ function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = t
         isDragging = true;
         dragStartPos = { x: event.clientX, y: event.clientY };
         dragStartTime = Date.now();
+        console.log('[DEBUG] Mouse down at', dragStartTime);
 
         // グラブ用の初期情報を保存
         grabHitPoint = intersects[0].point.clone();
@@ -790,6 +788,11 @@ function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = t
             console.log('[VRM Grab] Starting grab mode (timeout)');
             grabStarted = true;
             isGrabbing = true;
+
+            // カーソルをgrabbingに変更
+            if (enableInteraction) {
+              gl.domElement.style.cursor = 'grabbing';
+            }
 
             // 掴むボーンを特定（hitPointから最も近いボーンを探す）
             const vrm = vrmRef.current;
@@ -873,8 +876,13 @@ function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = t
     };
 
     const handleMouseUp = (event) => {
+      const mouseUpTime = Date.now();
+      const duration = mouseUpTime - dragStartTime;
+      console.log('[DEBUG] Mouse up at', mouseUpTime, 'duration:', duration, 'ms');
+
       // グラブタイマーをクリア
       if (grabTimeout) {
+        console.log('[DEBUG] Clearing grab timeout');
         clearTimeout(grabTimeout);
         grabTimeout = null;
       }
@@ -931,6 +939,11 @@ function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = t
         vrmGrabStateRef.current.grabbedBoneOriginalPos = null;
         vrmGrabStateRef.current.grabbedBoneOriginalRot = null;
 
+        // カーソルをgrabに戻す
+        if (enableInteraction) {
+          gl.domElement.style.cursor = 'grab';
+        }
+
         return;
       }
 
@@ -949,7 +962,9 @@ function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = t
 
       // ドラッグ距離が短く、時間も短ければタップ
       // ドラッグ距離が長いか、時間が長ければ撫でる
+      console.log('[DEBUG] Tap check - distance:', dragDistance, 'duration:', dragDuration);
       if (dragDistance < 10 && dragDuration < 200) {
+        console.log('[DEBUG] TAP detected!');
         // クールダウン中は無視
         if (!canReact) {
           isDragging = false;
@@ -1018,55 +1033,32 @@ function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = t
                 const hitPoint = intersects[0].point;
                 const maxDistance = 0.2; // 影響範囲：20cm（広げる）
 
-                // 揺らしてはいけないボーンを除外するフィルター（ブラックリスト方式）
-                const isUngrabableBone = (bone) => {
+                // 除外対象ボーンのフィルター
+                const isExcludedBone = (bone) => {
                   const name = bone.name || '';
-                  const lower = name.toLowerCase();
-
-                  // 顔のパーツ（目、眉、口など）
-                  if (lower.includes('目') || lower.includes('eye') ||
-                      lower.includes('眉') || lower.includes('brow') ||
-                      lower.includes('口') || lower.includes('mouth') ||
-                      lower.includes('lip') || lower.includes('唇') ||
-                      lower.includes('まぶた') || lower.includes('eyelid')) {
-                    return true;
-                  }
-
-                  // 頭、首
-                  if (lower.includes('head') || lower.includes('頭') ||
-                      lower.includes('neck') || lower.includes('首')) {
-                    return true;
-                  }
-
-                  // 体幹（上半身、下半身、胸、腰、背骨）
-                  if (lower.includes('spine') || lower.includes('背') ||
-                      lower.includes('chest') || lower.includes('胸') ||
-                      lower.includes('hips') || lower.includes('腰') ||
-                      lower.includes('上半身') || lower.includes('下半身') ||
-                      lower.includes('pelvis') || lower.includes('骨盤')) {
-                    return true;
-                  }
-
-                  // 肩
-                  if (lower.includes('shoulder') || lower.includes('肩')) {
-                    return true;
-                  }
-
-                  return false;
+                  return name.includes('目') ||
+                         name.toLowerCase().includes('eye') ||
+                         name.toLowerCase().includes('lefteye') ||
+                         name.toLowerCase().includes('righteye') ||
+                         name.includes('上半身') || name.toLowerCase().includes('upperbody') || name.toLowerCase().includes('chest') || name.toLowerCase().includes('spine') || name.toLowerCase().includes('torso') ||
+                         name.includes('口') || name.toLowerCase().includes('mouth') || name.toLowerCase().includes('lip') ||
+                         name.includes('頭') || name.toLowerCase().includes('head') ||
+                         name.includes('首') || name.toLowerCase().includes('neck') ||
+                         name.includes('眉') || name.toLowerCase().includes('eyebrow') || name.toLowerCase().includes('brow') || name.includes('まゆ');
                 };
 
                 // Spring Boneに物理的な外力を加える
                 if (vrm.springBoneManager) {
                   const springBoneManager = vrm.springBoneManager;
-                  const impulseStrength = 3.5; // 衝撃の強さ（0.5 → 2.0 → 3.5に増加）
+                  const impulseStrength = 8.0; // 衝撃の強さ（0.5 → 2.0 → 3.5 → 8.0に増加）
 
                   if (springBoneManager.springs) {
                     let affectedJoints = 0;
 
                     springBoneManager.springs.forEach(spring => {
                       spring.joints.forEach(joint => {
-                        // 揺らしてはいけないボーンは除外
-                        if (isUngrabableBone(joint.bone)) {
+                        // 除外対象ボーンは除く
+                        if (isExcludedBone(joint.bone)) {
                           return;
                         }
 
@@ -1182,6 +1174,13 @@ function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = t
 
     const canvas = gl.domElement;
 
+    // カーソルスタイルを設定
+    if (enableInteraction) {
+      canvas.style.cursor = 'grab';
+    } else {
+      canvas.style.cursor = 'default';
+    }
+
     // マウス追従用イベント
     if (enableMouseFollow) {
       window.addEventListener('mousemove', handleMouseMove);
@@ -1197,6 +1196,7 @@ function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = t
       }
       canvas.removeEventListener('mousedown', handleMouseDown);
       canvas.removeEventListener('mouseup', handleMouseUp);
+      canvas.style.cursor = 'default';
     };
   }, [enableMouseFollow, enableInteraction, camera, gl, onInteraction]);
 
@@ -1714,6 +1714,23 @@ function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = t
           vrm.springBoneManager.update(delta);
         }
       }
+
+      // グラブ中のボーン位置更新（SpringBone/vrm.update の後に適用）
+      if (vrmGrabStateRef.current.isGrabbing && vrmGrabStateRef.current.grabbedBone &&
+          vrmGrabStateRef.current.targetWorldPos) {
+        const bone = vrmGrabStateRef.current.grabbedBone;
+        const targetWorldPos = vrmGrabStateRef.current.targetWorldPos;
+
+        // ターゲット位置をボーンの親のローカル座標に変換
+        if (bone.parent) {
+          bone.parent.updateMatrixWorld(true);
+          const parentWorldMatrixInv = new THREE.Matrix4().copy(bone.parent.matrixWorld).invert();
+          const localTargetPos = targetWorldPos.clone().applyMatrix4(parentWorldMatrixInv);
+          bone.position.copy(localTargetPos);
+          bone.updateMatrix();
+          bone.updateMatrixWorld(true);
+        }
+      }
     } catch (error) {
       console.error('VRM update error:', error);
     }
@@ -1817,7 +1834,7 @@ function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = t
 }
 
 // MMDモデルコンポーネント
-function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onMeshReady, onInteraction, tapMotionUrls = [], petMotionUrls = [], onMmdInteractionMotion, helperRef: parentHelperRef, sceneRef: parentSceneRef, clonedMeshRef: parentClonedMeshRef, enableCameraFollow = false, onCameraChange, cameraConfig, targetLoopCount = 3, onLoopComplete, enablePhysicsRef, enablePhysics, enablePmxAnimation, enableSimplePhysics = false, onTapEffect, isSpeaking = false, currentSpeechText = '', mmdScale = 0.09, mmdShininess = 50, mmdBrightness = 1.0 }) {
+function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onMeshReady, onInteraction, tapMotionUrls = [], petMotionUrls = [], onMmdInteractionMotion, helperRef: parentHelperRef, sceneRef: parentSceneRef, clonedMeshRef: parentClonedMeshRef, enableCameraFollow = false, onCameraChange, cameraConfig, targetLoopCount = 3, onLoopComplete, enablePhysicsRef, enablePhysics, enablePmxAnimation, enableSimplePhysics = false, onTapEffect, isSpeaking = false, currentSpeechText = '', mmdScale = 0.09, mmdShininess = 50, mmdBrightness = 1.0, enableInteraction = true }) {
   // fileMap: Map<filename, objectURL>
 
   const { scene, camera, gl } = useThree();
@@ -1884,6 +1901,9 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
     targetWorldPos: null,
     grabHitDistance: null
   });
+
+  // インタラクションクールダウン用
+  const lastMMDInteractionRef = useRef(0);
 
   // fileMapとonLoadの参照を保存
   const fileMapRef = useRef(fileMap);
@@ -3032,6 +3052,11 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
           mmdGrabStarted = true;
           mmdIsGrabbing = true;
 
+          // カーソルをgrabbingに変更
+          if (enableInteraction) {
+            gl.domElement.style.cursor = 'grabbing';
+          }
+
           // 掴むボーンを特定（物理ボーン、または最も近いボーン）
           const mesh = meshRef.current;
           if (mesh.skeleton?.bones) {
@@ -3094,13 +3119,23 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
               console.log('[MMD Grab] Grabbed bone:', mmdGrabbedBone.name);
 
               // グラブインタラクションコールバックを呼ぶ
-              const bodyPart = getBoneCategory(mmdGrabbedBone.name);
-              if (onInteractionRef.current) {
-                onInteractionRef.current({
-                  type: 'grab',
-                  bodyPart,
-                  boneName: mmdGrabbedBone.name
-                });
+              const now = Date.now();
+              const canReact = (now - lastMMDInteractionRef.current) > 10000;
+
+              if (canReact) {
+                // クールダウン更新
+                lastMMDInteractionRef.current = now;
+
+                const bodyPart = getBoneCategory(mmdGrabbedBone.name);
+                if (onInteractionRef.current) {
+                  onInteractionRef.current({
+                    type: 'grab',
+                    bodyPart,
+                    boneName: mmdGrabbedBone.name
+                  });
+                }
+              } else {
+                console.log('[MMD Grab] Interaction ignored - cooldown active');
               }
             }
           }
@@ -3140,6 +3175,7 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
     let mmdGrabbedBoneOriginalRot = null;
     let mmdGrabHitPoint = null;
     let mmdGrabStarted = false;
+    let mmdGrabTimeout = null;
 
     const handleMMDMouseDown = (event) => {
       if (!meshRef.current) return;
@@ -3166,10 +3202,113 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
         mmdGrabHitPoint = intersects[0].point.clone();
         mmdGrabStarted = false;
         mmdIsGrabbing = false;
+
+        // 500ms後にグラブモードに入る（マウスを動かさなくても動作するように）
+        mmdGrabTimeout = setTimeout(() => {
+          if (mmdIsDragging && !mmdIsGrabbing && !mmdGrabStarted && meshRef.current && mmdGrabHitPoint) {
+            console.log('[MMD Grab] Starting grab mode (timeout)');
+            mmdGrabStarted = true;
+            mmdIsGrabbing = true;
+
+            // カーソルをgrabbingに変更
+            if (enableInteraction) {
+              gl.domElement.style.cursor = 'grabbing';
+            }
+
+            // 掴むボーンを特定（物理ボーン、または最も近いボーン）
+            const mesh = meshRef.current;
+            if (mesh.skeleton?.bones) {
+              let minDistance = Infinity;
+
+              // 掴んではいけないボーンかどうか判定（ブラックリスト方式）
+              const isUngrabableBone = (bone) => {
+                const name = bone.name || '';
+                const lower = name.toLowerCase();
+
+                // 顔のパーツ（目、眉、口など）
+                if (lower.includes('目') || lower.includes('eye') ||
+                    lower.includes('眉') || lower.includes('brow') ||
+                    lower.includes('口') || lower.includes('mouth') ||
+                    lower.includes('lip') || lower.includes('唇') ||
+                    lower.includes('まぶた') || lower.includes('eyelid')) {
+                  return true;
+                }
+
+                // 頭、首
+                if (lower.includes('head') || lower.includes('頭') ||
+                    lower.includes('neck') || lower.includes('首')) {
+                  return true;
+                }
+
+                // 体幹（上半身、下半身、背骨）※胸・腰・肩は除外
+                if (lower.includes('spine') || lower.includes('背') ||
+                    lower.includes('上半身') || lower.includes('下半身') ||
+                    lower.includes('pelvis') || lower.includes('骨盤')) {
+                  return true;
+                }
+
+                return false;
+              };
+
+              // タップアニメーションと同じ：hitPointから最も近いボーンを探す
+              mesh.skeleton.bones.forEach(bone => {
+                if (isUngrabableBone(bone)) return;
+
+                const boneWorldPos = new THREE.Vector3();
+                bone.getWorldPosition(boneWorldPos);
+                const distance = mmdGrabHitPoint.distanceTo(boneWorldPos);
+
+                if (distance < minDistance) {
+                  minDistance = distance;
+                  mmdGrabbedBone = bone;
+                }
+              });
+
+              if (mmdGrabbedBone) {
+                // 元の位置と回転を保存
+                mmdGrabbedBoneOriginalPos = mmdGrabbedBone.position.clone();
+                mmdGrabbedBoneOriginalRot = mmdGrabbedBone.quaternion.clone();
+
+                // グラブ状態をRefに保存
+                mmdGrabStateRef.current.isGrabbing = true;
+                mmdGrabStateRef.current.grabbedBone = mmdGrabbedBone;
+                mmdGrabStateRef.current.grabHitDistance = mmdGrabHitPoint.distanceTo(camera.position);
+
+                console.log('[MMD Grab] Grabbed bone:', mmdGrabbedBone.name);
+
+                // グラブインタラクションコールバックを呼ぶ
+                const now = Date.now();
+                const canReact = (now - lastMMDInteractionRef.current) > 10000;
+
+                if (canReact) {
+                  // クールダウン更新
+                  lastMMDInteractionRef.current = now;
+
+                  const bodyPart = getBoneCategory(mmdGrabbedBone.name);
+                  if (onInteractionRef.current) {
+                    onInteractionRef.current({
+                      type: 'grab',
+                      bodyPart,
+                      boneName: mmdGrabbedBone.name
+                    });
+                  }
+                } else {
+                  console.log('[MMD Grab] Interaction ignored - cooldown active');
+                }
+              }
+            }
+          }
+        }, 500);
       }
     };
 
     const handleMMDMouseUp = (event) => {
+      // グラブタイマーをクリア
+      if (mmdGrabTimeout) {
+        clearTimeout(mmdGrabTimeout);
+        mmdGrabTimeout = null;
+      }
+
       // MMDグラブ中の場合はリリース処理
       if (mmdIsGrabbing && mmdGrabbedBone && mmdGrabbedBoneOriginalPos) {
         console.log('[MMD Grab] Releasing grabbed bone');
@@ -3219,6 +3358,11 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
         mmdGrabStateRef.current.grabbedBone = null;
         mmdGrabStateRef.current.targetWorldPos = null;
         mmdGrabStateRef.current.grabHitDistance = null;
+
+        // カーソルをgrabに戻す
+        if (enableInteraction) {
+          gl.domElement.style.cursor = 'grab';
+        }
 
         return;
       }
@@ -3353,7 +3497,7 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
             }
 
             // GPT-5 nanoで部位カテゴリを判定（非同期）
-            if (tappedBoneName && aiStatus === 'ready') {
+            if (tappedBoneName && aiService.isReady) {
               (async () => {
                 try {
                   const categoryResult = await aiService.simpleQuery(
@@ -3368,7 +3512,13 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
                   console.log('[GPT-5 nano] MMD Body part category:', { boneName: tappedBoneName, getBoneCategory: bodyPart, gptCategory: finalCategory });
 
                   // GPT-5 nanoの判定結果をonInteractionコールバックで通知
-                  if (onInteractionRef.current) {
+                  const now = Date.now();
+                  const canReact = (now - lastMMDInteractionRef.current) > 10000;
+
+                  if (canReact && onInteractionRef.current) {
+                    // クールダウン更新
+                    lastMMDInteractionRef.current = now;
+
                     onInteractionRef.current({
                       type: 'tap',
                       bodyPart: finalCategory,
@@ -3377,6 +3527,8 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
                       source: 'gpt5nano'
                     });
                     console.log('[GPT-5 nano] MMD interaction with GPT category:', finalCategory);
+                  } else if (!canReact) {
+                    console.log('[MMD Tap] Interaction ignored - cooldown active');
                   }
                 } catch (error) {
                   console.error('[GPT-5 nano] Failed to identify MMD body part category:', error);
@@ -3642,6 +3794,14 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
     };
 
     const canvas = gl.domElement;
+
+    // カーソルスタイルを設定
+    if (enableInteraction) {
+      canvas.style.cursor = 'grab';
+    } else {
+      canvas.style.cursor = 'default';
+    }
+
     canvas.addEventListener('mousemove', handleMouseMove);
     canvas.addEventListener('mousedown', handleMMDMouseDown);
     canvas.addEventListener('mouseup', handleMMDMouseUp);
@@ -3650,8 +3810,9 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
       canvas.removeEventListener('mousemove', handleMouseMove);
       canvas.removeEventListener('mousedown', handleMMDMouseDown);
       canvas.removeEventListener('mouseup', handleMMDMouseUp);
+      canvas.style.cursor = 'default';
     };
-  }, [camera, gl]);
+  }, [camera, gl, enableInteraction]);
 
   useFrame((_, delta) => {
     const helper = helperRef.current;
@@ -5165,6 +5326,7 @@ const VRMViewer = forwardRef(({ modelUrl, modelType = 'auto', onMotionReady, ena
             mmdScale={mmdScale}
             mmdShininess={mmdShininess}
             mmdBrightness={mmdBrightness}
+            enableInteraction={enableInteraction}
           />
         ) : type === 'unsupported' ? (
           <group>

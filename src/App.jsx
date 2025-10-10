@@ -14,6 +14,7 @@ import { saveImportedMotions, loadImportedMotions, saveFavoriteMotions, loadFavo
 import LicenseModal from './components/LicenseModal';
 import AboutModal from './components/AboutModal';
 import licenseApi from './services/licenseApi';
+import ttsModManager from './services/ttsModManager';
 
 
 // 全ての待機モーション（ループ可能なもの）
@@ -485,6 +486,8 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showVoiceSettings, setShowVoiceSettings] = useState(false); // 声質調整モーダル
   const [showAboutModal, setShowAboutModal] = useState(false); // Aboutモーダル
+  const [installedMods, setInstalledMods] = useState([]); // インストール済みMod一覧
+  const [showModManagement, setShowModManagement] = useState(false); // Mod管理セクション開閉
   const [hideVoicevoxNotice, setHideVoicevoxNotice] = useState(() => {
     const saved = localStorage.getItem('hideVoicevoxNotice');
     return saved ? JSON.parse(saved) : false;
@@ -566,6 +569,21 @@ function App() {
       }
     }
     loadData();
+  }, []);
+
+  // TTS Modsを読み込み
+  useEffect(() => {
+    async function loadMods() {
+      try {
+        const mods = await ttsModManager.listMods();
+        setInstalledMods(mods);
+        console.log('[TTS Mods] Loaded', mods.length, 'mods');
+      } catch (error) {
+        console.error('[TTS Mods] Failed to load mods:', error);
+        setInstalledMods([]);
+      }
+    }
+    loadMods();
   }, []);
 
   useEffect(() => {
@@ -767,6 +785,7 @@ function App() {
   const clonedMeshRef = useRef(null); // MMD/VRMモデルのクローン保存用
   const [cameraConfig, setCameraConfig] = useState({ position: [0, 1.4, 2.5], fov: 50, lookAt: [0, 1, 0] });
   const [isResidentMode, setIsResidentMode] = useState(false);
+  const [isResidentTouchMode, setIsResidentTouchMode] = useState(false); // 常駐モード時のお触りモード
   const [showResidentChat, setShowResidentChat] = useState(false);
   const residentChatEndRef = useRef(null);
   const [capturedImage, setCapturedImage] = useState(null); // 画面キャプチャ画像
@@ -803,7 +822,8 @@ function App() {
   // 常駐モード時のクリックスルー制御とウィンドウレベル制御
   useEffect(() => {
     if (window.electronAPI?.toggleClickThrough) {
-      window.electronAPI.toggleClickThrough(isResidentMode);
+      // 常駐モードでも、お触りモードの時は透過しない
+      window.electronAPI.toggleClickThrough(isResidentMode && !isResidentTouchMode);
     }
 
     // ウィンドウレベル設定
@@ -820,8 +840,8 @@ function App() {
       }
     }
 
-    console.log('[App] Resident mode:', isResidentMode);
-  }, [isResidentMode, showAboveFullscreen]);
+    console.log('[App] Resident mode:', isResidentMode, 'Touch mode:', isResidentTouchMode);
+  }, [isResidentMode, isResidentTouchMode, showAboveFullscreen]);
 
   // 常駐モードチャットの自動スクロール
   useEffect(() => {
@@ -2041,24 +2061,10 @@ function App() {
                   const randomResponse = wakeWordResponses[Math.floor(Math.random() * wakeWordResponses.length)];
                   console.log('[Wake Word] Responding with:', randomResponse);
 
-                  // VOICEVOX TTSで再生
-                  if (ttsEngine === 'voicevox') {
-                    voicevoxService.speak(randomResponse, {
-                      speaker: voiceCharacter,
-                      speedScale: voiceSpeedScale,
-                      volumeScale: 1.0,
-                      pitchScale: voicePitchScale,
-                      intonationScale: voiceIntonationScale
-                    });
-                  } else if (ttsEngine.startsWith('moe-model')) {
-                    const modelId = ttsEngine === 'moe-model12' ? 12 : 15;
-                    moeTTSService.speak(randomResponse, {
-                      modelId: modelId,
-                      speaker: voiceCharacter,
-                      speed: 1.0,
-                      language: ttsLanguage
-                    });
-                  }
+                  // 統合TTS関数で再生
+                  synthesizeSpeech(randomResponse).catch(error => {
+                    console.error('[Wake Word] TTS failed:', error);
+                  });
                   // else if (ttsEngine === 'vits-uma') {
                   //   const character = umaVoiceService.constructor.getCharacterByJpName(voiceCharacter);
                   //   const characterId = character ? character.id : 0;
@@ -2133,6 +2139,122 @@ function App() {
     return () => clearInterval(interval);
   }, [aiStatus]);
 
+
+  // TTS Modインポートハンドラー
+  const handleModImport = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+      console.log('[TTS Mod] Importing:', file.name);
+      const arrayBuffer = await file.arrayBuffer();
+      await ttsModManager.importMod(arrayBuffer);
+
+      // Mod一覧を更新
+      const mods = await ttsModManager.listMods();
+      setInstalledMods(mods);
+
+      alert('Modを正常にインポートしました！');
+    } catch (error) {
+      console.error('[TTS Mod] Import failed:', error);
+      alert(`Modのインポートに失敗しました: ${error.message}`);
+    }
+
+    // ファイル選択をリセット
+    event.target.value = '';
+  };
+
+  // TTS Mod削除ハンドラー
+  const handleModDelete = async (modId) => {
+    if (!confirm('このModを削除しますか？')) return;
+
+    try {
+      await ttsModManager.deleteMod(modId);
+
+      // Mod一覧を更新
+      const mods = await ttsModManager.listMods();
+      setInstalledMods(mods);
+
+      console.log('[TTS Mod] Deleted:', modId);
+    } catch (error) {
+      console.error('[TTS Mod] Delete failed:', error);
+      alert(`Modの削除に失敗しました: ${error.message}`);
+    }
+  };
+
+  // 統合音声合成関数（VOICEVOX、MoeTTS、Modを統一的に扱う）
+  const synthesizeSpeech = async (text, options = {}) => {
+    try {
+      if (ttsEngine === 'voicevox') {
+        // VOICEVOX - 既存の実装（再生まで行う）
+        return await voicevoxService.speak(text, {
+          speaker: voiceCharacter,
+          speedScale: voiceSpeedScale,
+          volumeScale: 1.0,
+          pitchScale: voicePitchScale,
+          intonationScale: voiceIntonationScale,
+          ...options
+        });
+      } else if (ttsEngine.startsWith('moe-model')) {
+        // MoeTTS - 既存の実装（再生まで行う）
+        const modelId = ttsEngine === 'moe-model12' ? 12 : 15;
+        return await moeTTSService.speak(text, {
+          modelId: modelId,
+          speaker: voiceCharacter,
+          speed: voiceSpeedScale,
+          language: ttsLanguage,
+          ...options
+        });
+      } else if (ttsEngine.startsWith('mod:')) {
+        // TTS Mod - Blobを取得して再生
+        const modId = ttsEngine.replace('mod:', '');
+        const modService = await ttsModManager.loadMod(modId);
+
+        // キャラクター名からIDを取得
+        const voices = await modService.getVoices();
+        const selectedVoice = voices.find(v => v.name === voiceCharacter);
+        const speakerId = selectedVoice ? (selectedVoice.id || selectedVoice.name) : voiceCharacter;
+
+        // Modのspeak()はBlobを返す
+        const audioBlob = await modService.speak(text, {
+          speaker: speakerId,
+          speed: voiceSpeedScale,
+          pitch: voicePitchScale,
+          language: options.language || 'ja',
+          ...options
+        });
+
+        // Blobを再生
+        if (audioBlob) {
+          return new Promise((resolve, reject) => {
+            const audioUrl = URL.createObjectURL(audioBlob);
+            const audio = new Audio(audioUrl);
+
+            audio.onended = () => {
+              URL.revokeObjectURL(audioUrl);
+              console.log('[TTS Mod] Playback completed');
+              resolve();
+            };
+
+            audio.onerror = (error) => {
+              URL.revokeObjectURL(audioUrl);
+              console.error('[TTS Mod] Playback error:', error);
+              reject(error);
+            };
+
+            audio.play().catch(reject);
+          });
+        }
+
+        return null;
+      } else {
+        throw new Error(`Unknown TTS engine: ${ttsEngine}`);
+      }
+    } catch (error) {
+      console.error('[TTS] Synthesis failed:', error);
+      throw error;
+    }
+  };
 
   // インタラクション重複防止用ref
   const lastInteractionCallRef = useRef(0);
@@ -2325,20 +2447,14 @@ ${basePrompt}${interactionDetails}
       console.log('[Interaction] Starting TTS with engine:', ttsEngine, 'character:', voiceCharacter, 'message:', assistantMessage);
 
       try {
-        if (ttsEngine === 'voicevox') {
-          // VOICEVOX TTS
+        if (ttsEngine === 'voicevox' || ttsEngine.startsWith('mod:')) {
+          // VOICEVOX TTS または TTS Mod
           setIsSpeaking(true);
           setIsTTSSpeaking(true);
           setCurrentSpeechText(assistantMessage);
           setCurrentGesture('speaking');
 
-          await voicevoxService.speak(assistantMessage, {
-            speaker: voiceCharacter,
-            speedScale: voiceSpeedScale,
-            volumeScale: 1.0,
-            pitchScale: voicePitchScale,
-            intonationScale: voiceIntonationScale
-          });
+          await synthesizeSpeech(assistantMessage);
 
           setIsSpeaking(false);
           setIsTTSSpeaking(false);
@@ -2426,6 +2542,17 @@ ${basePrompt}${interactionDetails}
       }
     } catch (error) {
       console.error('Interaction handler error:', error);
+
+      // トークン上限エラーの場合、音声認識を停止
+      const isTokenLimitError = error.message?.includes('Token limit exceeded');
+      if (isTokenLimitError) {
+        console.log('[Interaction] Token limit exceeded - stopping voice recording');
+        if (voiceRecorder) {
+          voiceRecorder.stopRecording();
+        }
+        setAiStatus('error');
+        aiStatusRef.current = 'error';
+      }
     }
   };
 
@@ -2802,23 +2929,9 @@ ${basePrompt}${interactionDetails}
         setCurrentGesture('wave');
 
         // TTSで通知
-        if (ttsEngine === 'voicevox') {
-          await voicevoxService.speak(assistantMessage, {
-            speaker: voiceCharacter,
-            speedScale: voiceSpeedScale,
-            volumeScale: 1.0,
-            pitchScale: voicePitchScale,
-            intonationScale: voiceIntonationScale
-          });
-        } else if (ttsEngine.startsWith('moe-model')) {
-          const modelId = ttsEngine === 'moe-model12' ? 12 : 15;
-          await moeTTSService.speak(notificationMessage, {
-            modelId: modelId,
-            speaker: voiceCharacter,
-            speed: 1.0,
-            language: ttsLanguage
-          });
-        } else if (false && ttsEngine === 'vits-uma') { // コメントアウト
+        await synthesizeSpeech(assistantMessage);
+
+        if (false && ttsEngine === 'vits-uma') { // コメントアウト
           const character = umaVoiceService.constructor.getCharacterByJpName(voiceCharacter);
           const characterId = character ? character.id : 0;
           await umaVoiceService.speak(notificationMessage, {
@@ -3190,23 +3303,11 @@ ${assistantMessage}`,
         console.log('[Filler] Playing:', randomFiller);
 
         // 相槌をTTSで再生（完了を待たずに次に進む）
-        if (ttsEngine === 'voicevox') {
-          await voicevoxService.speak(assistantMessage, {
-            speaker: voiceCharacter,
-            speedScale: voiceSpeedScale,
-            volumeScale: 1.0,
-            pitchScale: voicePitchScale,
-            intonationScale: voiceIntonationScale
-          });
-        } else if (ttsEngine.startsWith('moe-model')) {
-          const modelId = ttsEngine === 'moe-model12' ? 12 : 15;
-          moeTTSService.speak(randomFiller, {
-            modelId: modelId,
-            speaker: voiceCharacter,
-            speed: 1.0,
-            language: ttsLanguage
-          });
-        } else if (false && ttsEngine === 'vits-uma') { // コメントアウト
+        synthesizeSpeech(randomFiller).catch(error => {
+          console.error('[Filler] TTS failed:', error);
+        });
+
+        if (false && ttsEngine === 'vits-uma') { // コメントアウト
           const character = umaVoiceService.constructor.getCharacterByJpName(voiceCharacter);
           const characterId = character ? character.id : 0;
           umaVoiceService.speak(randomFiller, {
@@ -3336,6 +3437,20 @@ ${assistantMessage}`,
             await moeTTSService.playAudio(audioUrl);
           }
 
+        } else if (ttsEngine === 'voicevox' || ttsEngine.startsWith('mod:')) {
+          // VOICEVOX または TTS Mod
+          setIsSpeaking(true);
+          setIsTTSSpeaking(true);
+          setCurrentEmotion(fallbackEmotion);
+          setCurrentGesture('speaking');
+
+          // チャンクを順次再生
+          for (let i = 0; i < textChunks.length; i++) {
+            const chunk = textChunks[i];
+            console.log(`[TTS] Playing chunk ${i + 1}/${textChunks.length}`);
+            await synthesizeSpeech(chunk);
+          }
+
         } else if (ttsEngine === 'vits-uma') {
           // VITS-Umamusumeの場合は従来通り（synthesizeメソッドがないため）
           for (let i = 0; i < textChunks.length; i++) {
@@ -3383,6 +3498,22 @@ ${assistantMessage}`,
 
     } catch (error) {
       console.error('[Chat] Error:', error);
+
+      // トークン上限エラーの場合、音声認識を停止
+      const isTokenLimitError = error.message?.includes('Token limit exceeded');
+      if (isTokenLimitError) {
+        console.log('[Chat] Token limit exceeded - stopping voice recording');
+        if (voiceRecorder) {
+          voiceRecorder.stopRecording();
+        }
+        setAiStatus('error');
+        aiStatusRef.current = 'error';
+        setChatHistory(prev => [...prev, {
+          role: 'assistant',
+          content: '今月のトークン上限に達しました。音声認識を停止しました。'
+        }]);
+        return;
+      }
 
       // 接続エラーの可能性がある場合、自動再接続を試みる
       const isConnectionError =
@@ -3896,7 +4027,7 @@ ${assistantMessage}`,
               <button
                 className="motion-selector-btn"
                 onClick={() => setShowMotionSelector(true)}
-                title="モーション選択"
+                data-tooltip="モーション選択"
               >
                 <i className="fas fa-walking"></i>
               </button>
@@ -3911,12 +4042,14 @@ ${assistantMessage}`,
             <button
               className="minimize-btn"
               onClick={() => window.electronAPI?.minimizeWindow()}
+              data-tooltip="最小化"
             >
               ＿
             </button>
             <button
               className="close-btn"
               onClick={() => window.electronAPI?.closeWindow()}
+              data-tooltip="閉じる"
             >
               ✕
             </button>
@@ -3956,7 +4089,7 @@ ${assistantMessage}`,
                     console.log('[App] Applied new motion after reload:', randomPrimary);
                   }
                 }}
-                title="モデル完全再読み込み"
+                data-tooltip="モデル完全再読み込み"
               >
                 <i className="fas fa-sync-alt"></i>
               </button>
@@ -3964,21 +4097,21 @@ ${assistantMessage}`,
             <button
               className="settings-btn"
               onClick={() => setShowAboutModal(true)}
-              title="このアプリについて"
+              data-tooltip="このアプリについて"
             >
               <i className="fas fa-info-circle"></i>
             </button>
             <button
               className="settings-btn"
               onClick={() => setShowSettings(!showSettings)}
-              title="設定"
+              data-tooltip="設定"
             >
               <i className="fas fa-cog"></i>
             </button>
             <button
               className="resident-btn"
               onClick={toggleResidentMode}
-              title="常駐モード"
+              data-tooltip="常駐モード"
             >
               <i className="fas fa-thumbtack"></i>
             </button>
@@ -3991,8 +4124,22 @@ ${assistantMessage}`,
         <div
           className="resident-mode-exit"
           onMouseEnter={() => window.electronAPI?.toggleClickThrough(false)}
-          onMouseLeave={() => window.electronAPI?.toggleClickThrough(true)}
+          onMouseLeave={() => {
+            // お触りモードがONの時は透過に戻さない
+            if (!isResidentTouchMode) {
+              window.electronAPI?.toggleClickThrough(true);
+            }
+          }}
         >
+          {/* お触りモードボタン */}
+          <button
+            className={`resident-touch-btn ${isResidentTouchMode ? 'active' : ''}`}
+            onClick={() => setIsResidentTouchMode(prev => !prev)}
+            data-tooltip={isResidentTouchMode ? 'お触りモード: ON（クリックでOFF）\nキャラクターとインタラクション可能' : 'お触りモード: OFF（クリックでON）\nキャラクターに触れません'}
+          >
+            <i className="fas fa-hand-pointer"></i>
+          </button>
+
           <button
             className="resident-btn active"
             onClick={toggleResidentMode}
@@ -4035,7 +4182,7 @@ ${assistantMessage}`,
                   console.log('[App] Applied new motion after reload:', randomPrimary);
                 }
               }}
-              title="モデル再読み込み"
+              data-tooltip="モデル再読み込み"
             >
               <i className="fas fa-sync-alt"></i>
             </button>
@@ -4049,7 +4196,7 @@ ${assistantMessage}`,
           <>
             <button
               onClick={() => setShowControlPanel(!showControlPanel)}
-              title="モデル設定"
+              data-tooltip="モデル設定"
               style={{
                 position: 'absolute',
                 left: '20px',
@@ -4179,7 +4326,7 @@ ${assistantMessage}`,
             {/* カメラ追従（表示反転：光ってる=操作可能） */}
             <button
               onClick={() => setEnableCameraFollow(!enableCameraFollow)}
-              title={!enableCameraFollow ? "カメラ操作: ON" : "カメラ追従中: カメラ操作不可"}
+              data-tooltip={!enableCameraFollow ? "カメラ操作: ON" : "カメラ追従中: カメラ操作不可"}
               style={{
                 width: '50px',
                 height: '50px',
@@ -4203,7 +4350,7 @@ ${assistantMessage}`,
             {/* お触りモード（指アイコン） */}
             <button
               onClick={() => setEnableManualCamera(!enableManualCamera)}
-              title={!enableManualCamera ? "お触りモード: ON" : "お触りモード: OFF"}
+              data-tooltip={!enableManualCamera ? "お触りモード: ON（クリックでOFF）" : "お触りモード: OFF（クリックでON）"}
               style={{
                 width: '50px',
                 height: '50px',
@@ -4231,7 +4378,7 @@ ${assistantMessage}`,
                 setCameraConfig(defaultConfig);
                 console.log('[Camera] Reset to default position:', defaultConfig);
               }}
-              title="カメラ位置をリセット"
+              data-tooltip="カメラ位置をリセット"
               style={{
                 width: '50px',
                 height: '50px',
@@ -4279,7 +4426,7 @@ ${assistantMessage}`,
                   setEnablePhysics(newValue);
                   localStorage.setItem('enablePhysics', JSON.stringify(newValue));
                 }}
-                title={enablePhysics ? "物理演算: ON" : "物理演算: OFF"}
+                data-tooltip={enablePhysics ? "物理演算: ON" : "物理演算: OFF"}
                 style={{
                   width: '50px',
                   height: '50px',
@@ -4308,7 +4455,7 @@ ${assistantMessage}`,
                   setEnableSimplePhysics(!enableSimplePhysics);
                   localStorage.setItem('enableSimplePhysics', JSON.stringify(!enableSimplePhysics));
                 }}
-                title={enableSimplePhysics ? "簡易物理: ON" : "簡易物理: OFF"}
+                data-tooltip={enableSimplePhysics ? "簡易物理: ON" : "簡易物理: OFF"}
                 style={{
                   width: '50px',
                   height: '50px',
@@ -4338,7 +4485,7 @@ ${assistantMessage}`,
                   localStorage.setItem('enablePmxAnimation', JSON.stringify(!enablePmxAnimation));
                   setWebglResetKey(prev => prev + 1);
                 }}
-                title={enablePmxAnimation ? "PMXアニメ: ON" : "PMXアニメ: OFF"}
+                data-tooltip={enablePmxAnimation ? "PMXアニメ: ON" : "PMXアニメ: OFF"}
                 style={{
                   width: '50px',
                   height: '50px',
@@ -4394,7 +4541,7 @@ ${assistantMessage}`,
             }}
             enableMouseFollow={enableMouseFollow}
             enableCameraFollow={enableCameraFollow}
-            enableManualCamera={enableManualCamera}
+            enableManualCamera={isResidentMode && isResidentTouchMode ? false : enableManualCamera}
             enableInteraction={enableInteraction}
             overlayBlendRatio={overlayBlendRatio}
             emotion={currentEmotion}
@@ -4570,6 +4717,24 @@ ${assistantMessage}`,
                 if (chars.length > 0) {
                   setVoiceCharacter(chars[0]);
                 }
+              } else if (newEngine.startsWith('mod:')) {
+                // Modが選択された場合
+                const modId = newEngine.replace('mod:', '');
+                try {
+                  const modService = await ttsModManager.loadMod(modId);
+                  const voices = await modService.getVoices();
+
+                  // 音声リストをフォーマット
+                  const voiceNames = voices.map(v => v.name || v.id);
+                  setCharacterList(voiceNames);
+
+                  if (voiceNames.length > 0) {
+                    setVoiceCharacter(voiceNames[0]);
+                  }
+                } catch (error) {
+                  console.error('[TTS Mod] Failed to load mod:', error);
+                  alert(`Modの読み込みに失敗しました: ${error.message}`);
+                }
               }
             }}
             style={{
@@ -4590,6 +4755,20 @@ ${assistantMessage}`,
                 <option value="moe-model15" style={{ background: '#2a2a2a', color: '#fff' }}>MoeTTS Umamusume (87 characters)</option>
                 <option value="moe-model12" style={{ background: '#2a2a2a', color: '#fff' }}>MoeTTS Voistock (2891 characters)</option>
               </>
+            )}
+            {/* インストール済みMod */}
+            {installedMods.length > 0 && (
+              <optgroup label="─── カスタムTTS Mods ───">
+                {installedMods.map((mod) => (
+                  <option
+                    key={mod.id}
+                    value={`mod:${mod.id}`}
+                    style={{ background: '#2a2a2a', color: '#fff' }}
+                  >
+                    {mod.metadata.name} (Mod)
+                  </option>
+                ))}
+              </optgroup>
             )}
           </select>
 
@@ -4689,6 +4868,148 @@ ${assistantMessage}`,
               </select>
             </>
           )}
+
+          {/* TTS Mod管理セクション */}
+          <div style={{ marginTop: '15px', marginBottom: '15px' }}>
+            <button
+              onClick={() => setShowModManagement(!showModManagement)}
+              style={{
+                width: '100%',
+                padding: '10px',
+                marginBottom: '10px',
+                borderRadius: '8px',
+                border: '1px solid rgba(255,150,100,0.5)',
+                background: 'rgba(255,150,100,0.1)',
+                color: '#ffa',
+                fontSize: '13px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = 'rgba(255,150,100,0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'rgba(255,150,100,0.1)';
+              }}
+            >
+              <span>
+                <i className="fas fa-puzzle-piece" style={{ marginRight: '8px' }}></i>
+                TTS Mod 管理
+              </span>
+              <span>{showModManagement ? '▼' : '▶'}</span>
+            </button>
+
+            {showModManagement && (
+              <div style={{
+                background: 'rgba(0,0,0,0.3)',
+                borderRadius: '8px',
+                padding: '15px',
+                border: '1px solid rgba(255,255,255,0.1)'
+              }}>
+                {/* Modインポートボタン */}
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{
+                    display: 'block',
+                    width: '100%',
+                    padding: '10px',
+                    background: 'rgba(100,200,100,0.2)',
+                    border: '2px dashed rgba(100,200,100,0.5)',
+                    borderRadius: '8px',
+                    color: '#8f8',
+                    fontSize: '13px',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    boxSizing: 'border-box'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'rgba(100,200,100,0.3)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'rgba(100,200,100,0.2)';
+                  }}
+                  >
+                    <i className="fas fa-file-import" style={{ marginRight: '8px' }}></i>
+                    Mod (.zip) をインポート
+                    <input
+                      type="file"
+                      accept=".zip"
+                      onChange={handleModImport}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                </div>
+
+                {/* インストール済みMod一覧 */}
+                <div>
+                  <h5 style={{ color: '#fff', marginBottom: '10px', fontSize: '12px' }}>
+                    インストール済み ({installedMods.length})
+                  </h5>
+                  {installedMods.length === 0 ? (
+                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px', textAlign: 'center', padding: '20px 0' }}>
+                      インストールされているModはありません
+                    </p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {installedMods.map((mod) => (
+                        <div
+                          key={mod.id}
+                          style={{
+                            background: 'rgba(255,255,255,0.05)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: '6px',
+                            padding: '10px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                          }}
+                        >
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ color: '#fff', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px' }}>
+                              {mod.metadata?.name || mod.id}
+                            </div>
+                            {mod.metadata?.description && (
+                              <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '10px', marginBottom: '4px' }}>
+                                {mod.metadata.description}
+                              </div>
+                            )}
+                            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '10px' }}>
+                              v{mod.metadata?.version || '1.0.0'} by {mod.metadata?.author || 'Unknown'}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleModDelete(mod.id)}
+                            style={{
+                              padding: '6px 10px',
+                              background: 'rgba(255,100,100,0.2)',
+                              border: '1px solid rgba(255,100,100,0.4)',
+                              borderRadius: '6px',
+                              color: '#f88',
+                              fontSize: '11px',
+                              cursor: 'pointer',
+                              marginLeft: '10px'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.target.style.background = 'rgba(255,100,100,0.3)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.target.style.background = 'rgba(255,100,100,0.2)';
+                            }}
+                          >
+                            <i className="fas fa-trash" style={{ marginRight: '4px' }}></i>
+                            削除
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           <h4 style={{ color: '#fff', marginBottom: '10px', marginTop: '15px', fontSize: '14px' }}>自動話しかけ機能</h4>
           <div style={{ marginBottom: '15px' }}>
@@ -5377,15 +5698,10 @@ ${assistantMessage}`,
               {/* テスト再生ボタン */}
               <button
                 onClick={() => {
-                  if (ttsEngine === 'voicevox') {
-                    voicevoxService.speak('声質調整のテストです', {
-                      speaker: voiceCharacter,
-                      speedScale: voiceSpeedScale,
-                      volumeScale: 1.0,
-                      pitchScale: voicePitchScale,
-                      intonationScale: voiceIntonationScale
-                    });
-                  }
+                  synthesizeSpeech('声質調整のテストです').catch(error => {
+                    console.error('[Test] TTS failed:', error);
+                    alert(`テスト再生に失敗しました: ${error.message}`);
+                  });
                 }}
                 className="ai-init-btn"
                 style={{ background: 'rgba(100,200,100,0.3)', marginBottom: '10px' }}
@@ -5779,7 +6095,7 @@ ${assistantMessage}`,
                                 fontSize: '13px',
                                 padding: '4px'
                               }}
-                              title="削除"
+                              data-tooltip="削除"
                             ></i>
                           </div>
                         </div>
@@ -6096,7 +6412,7 @@ ${assistantMessage}`,
       {!isResidentMode && (
         <div className="chat-container">
           <div className="chat-history">
-            {chatHistory.slice(-3).map((msg, idx) => (
+            {chatHistory.map((msg, idx) => (
               <div key={idx} className={`message ${msg.role}`}>
                 <span>{msg.content}</span>
               </div>
@@ -6206,7 +6522,7 @@ ${assistantMessage}`,
                 justifyContent: 'center',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
               }}
-              title={isConversationMode ? '会話終了' : '連続会話'}
+              data-tooltip={isConversationMode ? '会話終了' : '連続会話'}
             >
               {isConversationMode ? <i className="fas fa-pause"></i> : <i className="fas fa-microphone"></i>}
             </button>
@@ -6227,7 +6543,7 @@ ${assistantMessage}`,
                 justifyContent: 'center',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
               }}
-              title={showResidentChat ? 'チャット非表示' : 'チャット表示'}
+              data-tooltip={showResidentChat ? 'チャット非表示' : 'チャット表示'}
             >
               {showResidentChat ? <i className="fas fa-times"></i> : <i className="fas fa-comment"></i>}
             </button>
@@ -6250,7 +6566,7 @@ ${assistantMessage}`,
                 boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                 opacity: (isCapturing || aiStatus !== 'ready') ? 0.5 : 1
               }}
-              title={isCapturing ? 'キャプチャ中...' : '画面をキャプチャ'}
+              data-tooltip={isCapturing ? 'キャプチャ中...' : '画面をキャプチャ'}
             >
               <i className="fas fa-camera"></i>
             </button>
@@ -6272,7 +6588,7 @@ ${assistantMessage}`,
                 boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                 position: 'relative'
               }}
-              title={(isTyping || isSpeaking) ? '処理中...' : '待機中'}
+              data-tooltip={(isTyping || isSpeaking) ? '処理中...' : '待機中'}
             >
               {(isTyping || isSpeaking) ? (
                 <div className="spinner"></div>
