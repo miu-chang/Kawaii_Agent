@@ -6,7 +6,6 @@ import { MOTION_LIBRARY } from './services/localMotionAI';
 import { unzip } from 'fflate';
 import moeTTSService from './services/moeTTSService'; // Hidden feature: enabled via localStorage
 import voicevoxService from './services/voicevoxService'; // VOICEVOX追加
-import rvcTTSService from './services/rvcTTSService'; // RVC TTS追加
 import voiceRecorder from './services/voiceRecorder';
 import speechRecognition from './services/speechRecognition';
 import voicePrintService from './services/voicePrintService';
@@ -1978,11 +1977,6 @@ function App() {
       // OpenAI サービスも初期化（インタラクション用）
       await replicateService.initialize(openaiApiKey || 'license-mode');
 
-      // RVC TTS サービスにもAPIキーを設定
-      if (ttsEngine === 'rvc-tts') {
-        rvcTTSService.setApiKey(openaiApiKey);
-      }
-
       setAiStatus('ready');
       setAiProgress('');
 
@@ -2054,12 +2048,6 @@ function App() {
                       volumeScale: 1.0,
                       pitchScale: voicePitchScale,
                       intonationScale: voiceIntonationScale
-                    });
-                  } else if (ttsEngine === 'rvc-tts') {
-                    rvcTTSService.speak(randomResponse, {
-                      character: voiceCharacter,
-                      speedScale: voiceSpeedScale,
-                      volumeScale: 1.0
                     });
                   } else if (ttsEngine.startsWith('moe-model')) {
                     const modelId = ttsEngine === 'moe-model12' ? 12 : 15;
@@ -2821,12 +2809,6 @@ ${basePrompt}${interactionDetails}
             pitchScale: voicePitchScale,
             intonationScale: voiceIntonationScale
           });
-        } else if (ttsEngine === 'rvc-tts') {
-          await rvcTTSService.speak(assistantMessage, {
-            character: voiceCharacter,
-            speedScale: voiceSpeedScale,
-            volumeScale: 1.0
-          });
         } else if (ttsEngine.startsWith('moe-model')) {
           const modelId = ttsEngine === 'moe-model12' ? 12 : 15;
           await moeTTSService.speak(notificationMessage, {
@@ -3214,12 +3196,6 @@ ${assistantMessage}`,
             volumeScale: 1.0,
             pitchScale: voicePitchScale,
             intonationScale: voiceIntonationScale
-          });
-        } else if (ttsEngine === 'rvc-tts') {
-          await rvcTTSService.speak(assistantMessage, {
-            character: voiceCharacter,
-            speedScale: voiceSpeedScale,
-            volumeScale: 1.0
           });
         } else if (ttsEngine.startsWith('moe-model')) {
           const modelId = ttsEngine === 'moe-model12' ? 12 : 15;
@@ -5407,12 +5383,6 @@ ${assistantMessage}`,
                       volumeScale: 1.0,
                       pitchScale: voicePitchScale,
                       intonationScale: voiceIntonationScale
-                    });
-                  } else if (ttsEngine === 'rvc-tts') {
-                    rvcTTSService.speak('声質調整のテストです', {
-                      character: voiceCharacter,
-                      speedScale: voiceSpeedScale,
-                      volumeScale: 1.0
                     });
                   }
                 }}

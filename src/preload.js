@@ -35,9 +35,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 外部URLを開く
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
 
-  // RVC音声変換
-  convertRVC: (audioBlob, modelName) => ipcRenderer.invoke('convert-rvc', audioBlob, modelName),
-
   // Parler-TTSサーバー管理
   startParlerTTSServer: () => ipcRenderer.invoke('start-parler-tts-server'),
   stopParlerTTSServer: () => ipcRenderer.invoke('stop-parler-tts-server')
