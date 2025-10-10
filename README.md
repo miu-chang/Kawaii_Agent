@@ -112,15 +112,53 @@ public/
 
 ## License
 
-This software is proprietary. Unauthorized distribution or modification is prohibited.
+Copyright © 2025 miu-chang (miu sekiguchi). All rights reserved.
 
-## Credits
+### Terms of Use
+- Personal and commercial use is permitted
+- Redistribution of the application itself is prohibited
+- Reverse engineering, decompilation, and disassembly are prohibited
 
-- VRM models: [Attribution if needed]
-- VOICEVOX: Hiroshiba Kazuyuki
-- MMD: Yu Higuchi (樋口優)
-- Animations: Mixamo / Custom
+### Privacy Policy
+- Conversation data is stored locally only
+- User input is sent to OpenAI API for response generation
+- Voice data is processed locally for speech recognition
+- License key information is stored for authentication
 
-## Support
+## Open Source Licenses
 
-For issues or questions, please contact support or open an issue on GitHub.
+This application uses the following open-source software:
+
+- **Electron** - MIT License
+- **React** - MIT License
+- **Three.js** - MIT License
+- **@pixiv/three-vrm** - MIT License
+- **mmd-parser** - MIT License
+- **ammojs-typed** - MIT License (Physics engine)
+
+## 3D Model Credits
+
+### Alicia Solid (Niconico Tachie-chan)
+© Dwango Co., Ltd.
+- License: Personal/Commercial use allowed (excluding corporations), modifications allowed
+- Credit attribution: Not required
+- Official: https://3d.nicovideo.jp/alicia/
+
+### VOICEVOX
+- **Engine**: Hiroshiba Kazuyuki
+- **License**: Commercial and non-commercial use allowed
+- **Credit required**: "VOICEVOX: [Character Name]"
+- **Characters**: 100+ voices including Zundamon, Shikoku Metan, Tsumugi Kasukabe, etc.
+- Official: https://voicevox.hiroshiba.jp/
+
+### Animations
+- Mixamo (Adobe)
+- Custom animations
+
+## Contact & Support
+
+- **Email**: weiyu.illustration2002@gmail.com
+- **Discord**: https://discord.gg/fsZaFkDDrU
+- **GitHub Issues**: https://github.com/miu-chang/Kawaii_Agent/issues
+
+For detailed terms of use, privacy policy, and license information, please refer to the "About" section in the application settings.
