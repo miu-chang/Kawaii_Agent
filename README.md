@@ -319,9 +319,6 @@ OPENAI_API_KEY=your_openai_api_key_here
 
 # オプション: ニュース機能
 NEWS_API_KEY=your_news_api_key_here
-
-# バックエンドURL（既に設定済み）
-BACKEND_API_URL=https://kawaii-agent-backend.vercel.app
 ```
 
 **注意:** オープンソース版は自分のOpenAI APIキーが必要です。https://platform.openai.com/api-keys で取得してください。
@@ -1093,9 +1090,6 @@ OPENAI_API_KEY=your_openai_api_key_here
 
 # Optional: News function
 NEWS_API_KEY=your_news_api_key_here
-
-# Backend URL (already configured)
-BACKEND_API_URL=https://kawaii-agent-backend.vercel.app
 ```
 
 **Note:** Open Source version requires your own OpenAI API key. Get one at https://platform.openai.com/api-keys
@@ -1867,9 +1861,6 @@ OPENAI_API_KEY=your_openai_api_key_here
 
 # 可选：新闻功能
 NEWS_API_KEY=your_news_api_key_here
-
-# 后端URL（已配置）
-BACKEND_API_URL=https://kawaii-agent-backend.vercel.app
 ```
 
 **注意：** 开源版本需要您自己的OpenAI API密钥。在 https://platform.openai.com/api-keys 获取
