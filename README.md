@@ -38,12 +38,22 @@ AI-powered desktop companion with VRM/MMD character support.
 
 ## Installation
 
-### Option 1: Use Pre-built Package (Recommended)
-1. Download the latest release
-2. Extract and run the executable
-3. Enter your license key when prompted
+### Option 1: Pre-built Package (BOOTH Version)
+**For general users - Recommended**
 
-### Option 2: Build from Source
+1. Purchase license key from BOOTH
+2. Download the application package
+3. Launch and enter your license key
+4. No API key required - AI features work immediately
+
+**Advantages:**
+- No OpenAI API key needed
+- Backend handles all API calls
+- Simple setup for non-technical users
+- Regular updates and support
+
+### Option 2: Build from Source (Open Source Version)
+**For developers and advanced users**
 
 ```bash
 # Clone repository
@@ -60,15 +70,23 @@ npm run build
 npm start
 ```
 
+**Requirements for source build:**
+- Your own OpenAI API key (required for AI features)
+- No license key needed
+- Self-hosted and customizable
+
 ## Configuration
 
-### License
-This application requires a valid license key. Purchase at [license URL].
+### BOOTH Version (Licensed)
+- License key: Purchased from BOOTH
+- OpenAI API: Provided via backend (no API key needed)
+- Updates: Automatic with package
 
-### API Keys
-Some features require external API keys (stored locally):
-- OpenAI API key (optional, for direct API access)
-- News API key (optional, for news function)
+### Open Source Version (Self-hosted)
+- License key: Not required
+- OpenAI API key: **Required** - Enter your own key in settings
+- News API key: Optional, for news function
+- Updates: Manual git pull and rebuild
 
 ## Usage
 
