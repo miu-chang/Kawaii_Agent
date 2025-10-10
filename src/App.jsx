@@ -1189,10 +1189,16 @@ function App() {
     mmdFallbackRef.current.manualPlayback.targetLoops = targetLoops;
     mmdFallbackRef.current.manualPlayback.currentLoops = 0;
 
-    // クローン再構築のために、現在のモーションを一度クリア
-    console.log('[Manual] Clearing current motion for clone reconstruction');
-    setMmdActiveMotionUrl(null);
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // クローン再構築（定期リセットと同じ処理）
+    console.log('[Manual] Resetting pose with clone reconstruction...');
+    if (vrmViewerRef.current?.resetBones) {
+      await vrmViewerRef.current.resetBones();
+      console.log('[Manual] Pose reset complete');
+    }
+
+    // メッシュ置き換え完了を待つ
+    console.log('[Manual] Waiting for mesh replacement to complete...');
+    await new Promise(resolve => setTimeout(resolve, 10));
 
     // インポートモーションの場合は、Base64からBlobを作成
     if (typeof motionData === 'object' && motionData.imported && motionData.data) {
@@ -1235,7 +1241,7 @@ function App() {
       const motionUrl = typeof motionData === 'string' ? motionData : motionData.url;
       applyMmdMotionUrl(motionUrl, null, targetLoops);
     }
-  }, [applyMmdMotionUrl]);
+  }, [applyMmdMotionUrl, extractMmdZip]);
 
   // お気に入りトグル
   const toggleFavorite = useCallback((motion) => {
