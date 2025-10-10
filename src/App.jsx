@@ -931,13 +931,15 @@ function App() {
       console.log(`[MMD Auto] Motion "${url}" will play ${loopCount} loops`);
     }
 
-    // モーション切り替えカウントは保持する
+    // モーション切り替えカウントと手動再生状態は保持する
     const currentSwitchCount = mmdFallbackRef.current.switchCount || 0;
+    const currentManualPlayback = mmdFallbackRef.current.manualPlayback;
     mmdFallbackRef.current = {
       active: url,
       mode,
       switchCount: currentSwitchCount,
-      isManual: manualLoopCount !== null // 手動再生フラグ
+      isManual: manualLoopCount !== null, // 手動再生フラグ
+      manualPlayback: currentManualPlayback // 手動再生データを保持
     };
 
     setMmdTargetLoopCount(loopCount);
