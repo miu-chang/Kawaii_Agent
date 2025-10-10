@@ -423,9 +423,10 @@ function App() {
   const [isLicenseModalOpen, setIsLicenseModalOpen] = useState(false);
   const [licenseInfo, setLicenseInfo] = useState(licenseApi.getLicenseInfo());
 
-  // 起動時にライセンスチェック
+  // 起動時にライセンスチェック（APIキーがない場合のみ）
   useEffect(() => {
-    if (!licenseApi.hasValidLicense()) {
+    const savedApiKey = localStorage.getItem('openaiApiKey');
+    if (!licenseApi.hasValidLicense() && !savedApiKey) {
       setIsLicenseModalOpen(true);
     }
   }, []);
@@ -1953,15 +1954,15 @@ function App() {
 
   // AI初期化
   const initializeAI = async () => {
-    // ライセンスチェック
-    if (!licenseApi.hasValidLicense()) {
-      setAiProgress('ライセンスキーを登録してください');
+    // .envからAPIキーを取得、なければapiKey stateを使用（オプション）
+    const openaiApiKey = apiKey.trim();
+
+    // ライセンスまたはAPIキーのどちらかが必要
+    if (!licenseApi.hasValidLicense() && !openaiApiKey) {
+      setAiProgress('ライセンスキーまたはOpenAI APIキーを入力してください');
       setIsLicenseModalOpen(true);
       return;
     }
-
-    // .envからAPIキーを取得、なければapiKey stateを使用（オプション）
-    const openaiApiKey = apiKey.trim();
 
     setAiStatus('loading');
     setAiProgress('AIサービスに接続中...');
