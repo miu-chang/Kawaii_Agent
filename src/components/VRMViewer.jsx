@@ -947,9 +947,9 @@ function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = t
 
       const dragDuration = now - dragStartTime;
 
-      // ドラッグ距離が短く、時間も短ければタップ
+      // ドラッグ距離が短く、時間も短ければタップ（閾値を緩和）
       // ドラッグ距離が長いか、時間が長ければ撫でる
-      if (dragDistance < 10 && dragDuration < 200) {
+      if (dragDistance < 30 && dragDuration < 500) {
         // クールダウン中は無視
         if (!canReact) {
           isDragging = false;
@@ -3246,8 +3246,8 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
 
       const dragDuration = Date.now() - mmdDragStartTime;
 
-      // ドラッグ距離が短く、時間も短ければタップ
-      if (dragDistance < 10 && dragDuration < 200) {
+      // ドラッグ距離が短く、時間も短ければタップ（閾値を緩和）
+      if (dragDistance < 30 && dragDuration < 500) {
         lastTapReaction.current = now;
 
         // Raycasterで部位検出とエフェクト
