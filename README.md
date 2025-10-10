@@ -648,7 +648,7 @@ Copyright 2025 miu-chang (miu sekiguchi). All rights reserved.
 - **@pixiv/three-vrm** - MIT License
 - **mmd-parser** - MIT License
 - **ammojs-typed** - MIT License
-- **@ricky0123/vad-web** - MIT License
+- **@ricky0123/vad-web** - ISC License (Voice Activity Detection)
 - **vosk-browser** - Apache 2.0 License
 
 完全なライセンステキストはアプリケーション内の 設定 → About → Licenses で確認できます。
@@ -1424,7 +1424,7 @@ This application uses the following open-source software:
 - **@pixiv/three-vrm** - MIT License
 - **mmd-parser** - MIT License
 - **ammojs-typed** - MIT License
-- **@ricky0123/vad-web** - MIT License
+- **@ricky0123/vad-web** - ISC License (Voice Activity Detection)
 - **vosk-browser** - Apache 2.0 License
 
 Full license texts available in application under Settings → About → Licenses.
@@ -2200,7 +2200,7 @@ Copyright 2025 miu-chang (miu sekiguchi). All rights reserved.
 - **@pixiv/three-vrm** - MIT License
 - **mmd-parser** - MIT License
 - **ammojs-typed** - MIT License
-- **@ricky0123/vad-web** - MIT License
+- **@ricky0123/vad-web** - ISC License (Voice Activity Detection)
 - **vosk-browser** - Apache 2.0 License
 
 完整的许可证文本可在应用程序的"设置" →"关于" →"许可证"中找到。

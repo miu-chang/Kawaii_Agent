@@ -287,6 +287,7 @@ const AboutModal = ({ isOpen, onClose }) => {
                   <p><strong>@pixiv/three-vrm</strong> - MIT License</p>
                   <p><strong>mmd-parser</strong> - MIT License</p>
                   <p><strong>ammojs-typed</strong> - MIT License (物理演算)</p>
+                  <p><strong>@ricky0123/vad-web</strong> - ISC License (音声認識)</p>
                 </div>
 
                 <h4 style={{ marginTop: '24px' }}>付属3Dモデル</h4>
