@@ -2,15 +2,19 @@ const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const webpack = require('webpack');
+const TerserPlugin = require('terser-webpack-plugin');
 require('dotenv').config();
 
-module.exports = {
-  mode: 'development',
-  entry: './src/renderer.js',
-  output: {
-    path: path.resolve(__dirname, 'dist'),
-    filename: 'bundle.js'
-  },
+module.exports = (env, argv) => {
+  const isProduction = argv.mode === 'production';
+
+  return {
+    mode: argv.mode || 'development',
+    entry: './src/renderer.js',
+    output: {
+      path: path.resolve(__dirname, 'dist'),
+      filename: 'bundle.js'
+    },
   module: {
     rules: [
       {
@@ -67,6 +71,20 @@ module.exports = {
       process: 'process/browser.js'
     })
   ],
+  optimization: isProduction ? {
+    minimize: true,
+    minimizer: [
+      new TerserPlugin({
+        terserOptions: {
+          compress: {
+            drop_console: true, // production時は全てのconsole.*を削除
+            drop_debugger: true,
+          },
+        },
+        extractComments: false,
+      }),
+    ],
+  } : {},
   devServer: {
     static: {
       directory: path.join(__dirname, 'dist')
@@ -74,4 +92,5 @@ module.exports = {
     port: 8080,
     hot: true
   }
+  };
 };
