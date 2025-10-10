@@ -978,13 +978,16 @@ function App() {
 
     // 手動再生モードの処理
     if (isManualPlaying && state.manualPlayback) {
-      state.manualPlayback.currentLoops = (state.manualPlayback.currentLoops || 0) + 1;
-      const { targetLoops, currentLoops } = state.manualPlayback;
-      console.log(`[Manual] Loop completed: ${currentLoops}/${targetLoops === -1 ? 'infinite' : targetLoops}`);
+      const { targetLoops } = state.manualPlayback;
+      console.log(`[Manual] Loop completed, reachedTargetLoops: ${reachedTargetLoops}, targetLoops: ${targetLoops === -1 ? 'infinite' : targetLoops}`);
 
       // 無限ループの場合は継続
       if (targetLoops === -1) {
         console.log('[Manual] Infinite loop - continuing');
+        if (!reachedTargetLoops) {
+          // まだループ中
+          return;
+        }
         const currentMotion = state.active;
         if (currentMotion) {
           setMmdActiveMotionUrl(null);
@@ -995,7 +998,7 @@ function App() {
       }
 
       // 指定ループ回数に達したか確認
-      if (currentLoops >= targetLoops) {
+      if (reachedTargetLoops) {
         console.log('[Manual] Target loops reached - returning to auto mode');
         setIsManualPlaying(false);
         state.manualPlayback = null;
@@ -1005,13 +1008,7 @@ function App() {
         return;
       } else {
         // まだループが残っている場合は継続
-        console.log('[Manual] Continuing manual playback');
-        const currentMotion = state.active;
-        if (currentMotion) {
-          setMmdActiveMotionUrl(null);
-          await new Promise(resolve => setTimeout(resolve, 50));
-          applyMmdMotionUrl(currentMotion, null, targetLoops);
-        }
+        console.log('[Manual] Continuing manual playback (loop not finished yet)');
         return;
       }
     }
