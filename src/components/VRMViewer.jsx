@@ -183,16 +183,18 @@ function CameraInteractionOverlay({ cameraConfig, onCameraChange }) {
   const targetRef = useRef(cameraConfig?.lookAt || [0,1,0]);
   const positionRef = useRef(cameraConfig?.position || [0, 1.4, 2.5]);
 
-  // 初期角度推定
+  // 初期角度推定（cameraConfigが変更されたらリセット）
   useEffect(() => {
     if (Array.isArray(cameraConfig?.position)) {
       const [x,y,z] = cameraConfig.position;
+      const [tx,ty,tz] = cameraConfig.lookAt || [0,1,0];
+      targetRef.current = [tx, ty, tz];
       positionRef.current = [x, y, z];
       distanceRef.current = Math.max(0.1, Math.sqrt(x*x + (z*z)));
       yawRef.current = Math.atan2(x, z);
-      pitchRef.current = Math.atan2(y - targetRef.current[1], Math.sqrt(x*x + z*z));
+      pitchRef.current = Math.atan2(y - ty, Math.sqrt(x*x + z*z));
     }
-  }, []);
+  }, [cameraConfig]);
 
   const updateCameraFromRotation = () => {
     const dist = distanceRef.current;

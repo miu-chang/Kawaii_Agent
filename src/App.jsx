@@ -4693,6 +4693,7 @@ ${assistantMessage}`,
             }}
             enableMouseFollow={enableMouseFollow}
             enableCameraFollow={enableCameraFollow}
+            manualCamera={!enableCameraFollow}
             enableManualCamera={isResidentMode && isResidentTouchMode ? false : enableManualCamera}
             enableInteraction={enableInteraction}
             overlayBlendRatio={overlayBlendRatio}
