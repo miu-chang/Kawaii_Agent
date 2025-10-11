@@ -169,12 +169,12 @@ const SHIFT_JIS_DECODER = (() => {
 const MMD_PRIMARY_KEYWORDS = ['ループ', 'ご機嫌', 'ぼんやり'];
 
 // ポーズファイル（静止ポーズ）を除外するキーワード
-// 注意：「モデルポージング」はアニメーションなので除外しない
-const MMD_POSE_KEYWORDS = ['pose', 'turn_pose', 'turn&pose'];
+// 注意：可愛いモーションを優先するため、除外キーワードは最小限に
+const MMD_POSE_KEYWORDS = [];
 
 // インタラクション用モーションキーワード
 const MMD_TAP_KEYWORDS = ['頭かく', 'dadakko', 'chikayori'];  // タップ時（照れる、甘える）
-const MMD_PET_KEYWORDS = ['ご機嫌', 'skip', 'cutely'];  // 撫でる時（嬉しい、スキップ）
+const MMD_PET_KEYWORDS = ['ご機嫌', 'skip'];  // 撫でる時（嬉しい、スキップ）
 
 const classifyMmdAnimations = (animations = []) => {
   if (!Array.isArray(animations) || animations.length === 0) {
@@ -1049,10 +1049,47 @@ function App() {
 
   // MMDインタラクション時のモーション切り替え
   const handleMmdInteractionMotion = useCallback(async (interactionType) => {
-    // インタラクション時のモーション切り替えとボーンリセットは無効化
-    // （物理演算の揺れのみで表現）
-    console.log(`[App] MMD interaction: ${interactionType} (no motion change, physics only)`);
-  }, []);
+    console.log(`[App] MMD interaction: ${interactionType}`);
+
+    // tapの場合のみ処理（pet時は物理演算のみ）
+    if (interactionType !== 'tap') {
+      return;
+    }
+
+    // ボーンの揺れアニメーションが終わるまで待機（約2秒）
+    console.log('[App] Waiting for tap animation to complete...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // クローン再構築（定期リセットと同じ処理）
+    console.log('[App] Tap animation complete - rebuilding clone...');
+    if (vrmViewerRef.current?.resetBones) {
+      await vrmViewerRef.current.resetBones();
+      console.log('[App] Clone rebuild complete');
+    }
+
+    // クローン再構築後、最小限の待機（メッシュ置き換え完了を待つ）
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    // tapモーションまたはvariantモーションを再生
+    const tapUrls = mmdTapMotionUrlsRef.current || [];
+    const variantUrls = mmdVariantMotionUrlsRef.current || [];
+
+    if (tapUrls.length > 0) {
+      // tapモーションがある場合はランダムに選択
+      const randomTapUrl = tapUrls[Math.floor(Math.random() * tapUrls.length)];
+      console.log('[App] Playing tap motion:', randomTapUrl);
+      await applyMmdMotionUrl(randomTapUrl, mmdPrimaryMotionUrlRef.current);
+    } else if (variantUrls.length > 0) {
+      // tapモーションがない場合はvariantから選択
+      const randomVariantUrl = variantUrls[Math.floor(Math.random() * variantUrls.length)];
+      console.log('[App] No tap motion available, playing variant:', randomVariantUrl);
+      await applyMmdMotionUrl(randomVariantUrl, mmdPrimaryMotionUrlRef.current);
+    } else {
+      // 何もない場合はprimaryモーションを再生
+      console.log('[App] No tap/variant motion, playing primary');
+      playMmdFallbackMotion(false);
+    }
+  }, [applyMmdMotionUrl, playMmdFallbackMotion]);
 
   const playMmdMotion = useCallback((motionKey) => {
     if (!mmdResources?.animations?.length) {
