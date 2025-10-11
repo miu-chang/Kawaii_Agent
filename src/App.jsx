@@ -544,6 +544,9 @@ function App() {
     stereoCamera: null,
     needsStereoRendering: false
   });
+  const [devModeEnabled, setDevModeEnabled] = useState(() => {
+    return localStorage.getItem('enable_moe_tts') === 'true';
+  });
 
   // enablePhysicsの変更をRefに同期
   useEffect(() => {
@@ -4866,7 +4869,8 @@ ${assistantMessage}`,
               setDevModeTapCount(newCount);
               if (newCount >= 10) {
                 ttsManager.enableDevMode();
-                alert('🔓 開発者モードが有効になりました！\n隠しTTSエンジンが使用可能になりました。');
+                setDevModeEnabled(true); // UI即座に反映
+                alert('🔓 開発者モードが有効になりました！\nMoeTTSエンジンが使用可能になりました。');
                 setDevModeTapCount(0);
               }
             }}
@@ -4991,10 +4995,10 @@ ${assistantMessage}`,
             }}
           >
             <option value="voicevox" style={{ background: '#2a2a2a', color: '#fff' }}>VOICEVOX (ずんだもん、四国めたん等 - 商用利用OK・高速)</option>
-            {localStorage.getItem('enable_moe_tts') === 'true' && (
+            {devModeEnabled && (
               <>
-                <option value="moe-model15" style={{ background: '#2a2a2a', color: '#fff' }}>MoeTTS Umamusume (87 characters)</option>
-                <option value="moe-model12" style={{ background: '#2a2a2a', color: '#fff' }}>MoeTTS Voistock (2891 characters)</option>
+                <option value="moe-model15" style={{ background: '#2a2a2a', color: '#fff' }}>🔓 MoeTTS Umamusume (87 characters)</option>
+                <option value="moe-model12" style={{ background: '#2a2a2a', color: '#fff' }}>🔓 MoeTTS Voistock (2891 characters)</option>
               </>
             )}
             {/* インストール済みMod */}

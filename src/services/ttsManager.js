@@ -152,6 +152,7 @@ export class TTSManager {
   // 開発者モードを有効化（10回タップで呼び出される）
   enableDevMode() {
     localStorage.setItem('devMode', 'true');
+    localStorage.setItem('enable_moe_tts', 'true'); // App.jsxと整合性を保つ
     this.enableHiddenEngines();
     console.log('[TTSManager] 🔓 開発者モードが有効になりました');
   }
