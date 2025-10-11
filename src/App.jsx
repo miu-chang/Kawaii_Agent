@@ -533,6 +533,7 @@ function App() {
   const threeRendererRef = useRef(null);
   const threeSceneRef = useRef(null);
   const threeCameraRef = useRef(null);
+  const currentModelRef = useRef(null); // MMD or VRM model reference
   const [devModeTapCount, setDevModeTapCount] = useState(0);
   const [enableHandTracking, setEnableHandTracking] = useState(() => {
     const saved = localStorage.getItem('enableHandTracking');
@@ -596,6 +597,17 @@ function App() {
     return () => {
       mobileInteractions.current?.destroy();
     };
+  }, []);
+
+  // ========================================
+  // TTS Manager初期化
+  // ========================================
+  useEffect(() => {
+    ttsManager.init().then(() => {
+      console.log('[App] TTS Manager initialized');
+    }).catch((error) => {
+      console.error('[App] TTS Manager initialization failed:', error);
+    });
   }, []);
 
   // ウェイクワード関連
@@ -4741,6 +4753,16 @@ ${assistantMessage}`,
             vrmScale={vrmScale}
             mmdShininess={mmdShininess}
             mmdBrightness={mmdBrightness}
+            onRendererReady={(renderer, scene, camera) => {
+              threeRendererRef.current = renderer;
+              threeSceneRef.current = scene;
+              threeCameraRef.current = camera;
+              console.log('[App] Three.js refs ready:', { renderer, scene, camera });
+            }}
+            onModelReady={(model, modelType) => {
+              currentModelRef.current = { model, modelType };
+              console.log('[App] Model ready:', modelType, model);
+            }}
           />
         )}
       </div>
@@ -6937,8 +6959,8 @@ ${assistantMessage}`,
           threeRenderer={threeRendererRef.current}
           scene={threeSceneRef.current}
           camera={threeCameraRef.current}
-          mmdModel={null} // VRMViewerから取得する必要がある
-          vrmModel={null} // VRMViewerから取得する必要がある
+          mmdModel={currentModelRef.current?.modelType === 'mmd' ? currentModelRef.current.model : null}
+          vrmModel={currentModelRef.current?.modelType === 'vrm' ? currentModelRef.current.model : null}
           onPlaceCharacter={(character, position) => {
             console.log('[App] Character placed at:', position);
           }}

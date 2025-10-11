@@ -318,8 +318,21 @@ function CameraInteractionOverlay({ cameraConfig, onCameraChange }) {
 }
 
 // VRMモデルコンポーネント
-function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = true, onMotionReady, emotion = 'neutral', emotionIntensity = 0.5, isTyping = false, gesture = null, isSpeaking = false, currentSpeechText = '', cameraConfig = { position: [0,1.4,2.5], fov: 50, lookAt: [0,1,0] }, onInteraction, enableCameraFollow = false, onCameraChange, overlayBlendRatio = 1.0, onTapEffect, vrmScale = 1.0 }) {
+function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = true, onMotionReady, emotion = 'neutral', emotionIntensity = 0.5, isTyping = false, gesture = null, isSpeaking = false, currentSpeechText = '', cameraConfig = { position: [0,1.4,2.5], fov: 50, lookAt: [0,1,0] }, onInteraction, enableCameraFollow = false, onCameraChange, overlayBlendRatio = 1.0, onTapEffect, vrmScale = 1.0, sceneRef: parentSceneRef, cameraRef: parentCameraRef, rendererRef: parentRendererRef }) {
   const { scene, camera, gl } = useThree();
+
+  // scene/camera/rendererをparentに伝える
+  useEffect(() => {
+    if (parentSceneRef) {
+      parentSceneRef.current = scene;
+    }
+    if (parentCameraRef) {
+      parentCameraRef.current = camera;
+    }
+    if (parentRendererRef) {
+      parentRendererRef.current = gl;
+    }
+  }, [scene, camera, gl, parentSceneRef, parentCameraRef, parentRendererRef]);
   const vrmRef = useRef();
   const gestureManagerRef = useRef();
   const idleAnimationManagerRef = useRef();
@@ -1834,17 +1847,23 @@ function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = t
 }
 
 // MMDモデルコンポーネント
-function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onMeshReady, onInteraction, tapMotionUrls = [], petMotionUrls = [], onMmdInteractionMotion, helperRef: parentHelperRef, sceneRef: parentSceneRef, clonedMeshRef: parentClonedMeshRef, enableCameraFollow = false, onCameraChange, cameraConfig, targetLoopCount = 3, onLoopComplete, enablePhysicsRef, enablePhysics, enablePmxAnimation, enableSimplePhysics = false, onTapEffect, isSpeaking = false, currentSpeechText = '', mmdScale = 0.09, mmdShininess = 50, mmdBrightness = 1.0, enableInteraction = true }) {
+function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onMeshReady, onInteraction, tapMotionUrls = [], petMotionUrls = [], onMmdInteractionMotion, helperRef: parentHelperRef, sceneRef: parentSceneRef, cameraRef: parentCameraRef, rendererRef: parentRendererRef, clonedMeshRef: parentClonedMeshRef, enableCameraFollow = false, onCameraChange, cameraConfig, targetLoopCount = 3, onLoopComplete, enablePhysicsRef, enablePhysics, enablePmxAnimation, enableSimplePhysics = false, onTapEffect, isSpeaking = false, currentSpeechText = '', mmdScale = 0.09, mmdShininess = 50, mmdBrightness = 1.0, enableInteraction = true }) {
   // fileMap: Map<filename, objectURL>
 
   const { scene, camera, gl } = useThree();
 
-  // sceneをparentに伝える
+  // scene/camera/rendererをparentに伝える
   useEffect(() => {
     if (parentSceneRef) {
       parentSceneRef.current = scene;
     }
-  }, [scene, parentSceneRef]);
+    if (parentCameraRef) {
+      parentCameraRef.current = camera;
+    }
+    if (parentRendererRef) {
+      parentRendererRef.current = gl;
+    }
+  }, [scene, camera, gl, parentSceneRef, parentCameraRef, parentRendererRef]);
 
   const meshRef = useRef();
   const helperRef = useRef();
@@ -4923,7 +4942,7 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
 }
 
 // メインビューアコンポーネント
-const VRMViewer = forwardRef(({ modelUrl, modelType = 'auto', onMotionReady, enableMouseFollow = true, enableInteraction = true, emotion = 'neutral', emotionIntensity = 0.5, isTyping = false, gesture = null, isSpeaking = false, currentSpeechText = '', cameraConfig = { position: [0, 1.4, 2.5], fov: 50, lookAt: [0,1,0] }, manualCamera = true, onCameraChange, mmdFileMap, mmdVmdUrls = [], mmdTapMotionUrls = [], mmdPetMotionUrls = [], onMmdAnimationDuration, onInteraction, onMmdInteractionMotion, enableCameraFollow = false, enableManualCamera = true, mmdTargetLoopCount = 3, onMmdLoopComplete, overlayBlendRatio = 1.0, enablePhysics = true, enablePmxAnimation = false, enableSimplePhysics = false, mmdScale = 0.09, vrmScale = 1.0, mmdShininess = 50, mmdBrightness = 1.0, parentClonedMeshRef, aiStatus = 'not-initialized' }, ref) => {
+const VRMViewer = forwardRef(({ modelUrl, modelType = 'auto', onMotionReady, enableMouseFollow = true, enableInteraction = true, emotion = 'neutral', emotionIntensity = 0.5, isTyping = false, gesture = null, isSpeaking = false, currentSpeechText = '', cameraConfig = { position: [0, 1.4, 2.5], fov: 50, lookAt: [0,1,0] }, manualCamera = true, onCameraChange, mmdFileMap, mmdVmdUrls = [], mmdTapMotionUrls = [], mmdPetMotionUrls = [], onMmdAnimationDuration, onInteraction, onMmdInteractionMotion, enableCameraFollow = false, enableManualCamera = true, mmdTargetLoopCount = 3, onMmdLoopComplete, overlayBlendRatio = 1.0, enablePhysics = true, enablePmxAnimation = false, enableSimplePhysics = false, mmdScale = 0.09, vrmScale = 1.0, mmdShininess = 50, mmdBrightness = 1.0, parentClonedMeshRef, aiStatus = 'not-initialized', onRendererReady, onModelReady }, ref) => {
   // console.log('[VRMViewer] Render', { modelType, mmdVmdUrls });
 
   const [type, setType] = useState(modelType);
@@ -4931,6 +4950,8 @@ const VRMViewer = forwardRef(({ modelUrl, modelType = 'auto', onMotionReady, ena
   const mmdInitialBonesRef = useRef(null);
   const mmdHelperRef = useRef(null);
   const mmdSceneRef = useRef(null);
+  const mmdCameraRef = useRef(null);
+  const mmdRendererRef = useRef(null);
   const mmdClonedMeshRef = parentClonedMeshRef || useRef(null);
   const [tapEffects, setTapEffects] = useState([]);
   const enablePhysicsRef = useRef(enablePhysics);
@@ -4939,6 +4960,13 @@ const VRMViewer = forwardRef(({ modelUrl, modelType = 'auto', onMotionReady, ena
   useEffect(() => {
     enablePhysicsRef.current = enablePhysics;
   }, [enablePhysics]);
+
+  // renderer/scene/cameraを親に渡す
+  useEffect(() => {
+    if (onRendererReady && mmdSceneRef.current && mmdCameraRef.current && mmdRendererRef.current) {
+      onRendererReady(mmdRendererRef.current, mmdSceneRef.current, mmdCameraRef.current);
+    }
+  }, [onRendererReady, mmdSceneRef.current, mmdCameraRef.current, mmdRendererRef.current]);
 
   // タップエフェクトを追加
   const handleTapEffect = (x, y) => {
@@ -4949,6 +4977,14 @@ const VRMViewer = forwardRef(({ modelUrl, modelType = 'auto', onMotionReady, ena
     setTimeout(() => {
       setTapEffects(prev => prev.filter(e => e.id !== effectId));
     }, 600);
+  };
+
+  // モデルロード時の処理
+  const handleModelLoad = (model) => {
+    if (onModelReady) {
+      onModelReady(model, type); // modelとtypeを渡す
+      console.log('[VRMViewer] Model loaded:', type, model);
+    }
   };
 
   // modelType prop が vrm / mmd のときはそれを優先
@@ -5298,6 +5334,9 @@ const VRMViewer = forwardRef(({ modelUrl, modelType = 'auto', onMotionReady, ena
             overlayBlendRatio={overlayBlendRatio}
             onTapEffect={handleTapEffect}
             vrmScale={vrmScale}
+            sceneRef={mmdSceneRef}
+            cameraRef={mmdCameraRef}
+            rendererRef={mmdRendererRef}
           />
         ) : type === 'mmd' ? (
           <MMDModel
@@ -5313,6 +5352,8 @@ const VRMViewer = forwardRef(({ modelUrl, modelType = 'auto', onMotionReady, ena
             onMmdInteractionMotion={onMmdInteractionMotion}
             helperRef={mmdHelperRef}
             sceneRef={mmdSceneRef}
+            cameraRef={mmdCameraRef}
+            rendererRef={mmdRendererRef}
             clonedMeshRef={mmdClonedMeshRef}
             enableCameraFollow={enableCameraFollow}
             onCameraChange={onCameraChange}
