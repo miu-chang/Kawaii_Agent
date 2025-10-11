@@ -65,7 +65,9 @@ module.exports = (env, argv) => {
     new webpack.DefinePlugin({
       'process.env.BACKEND_API_URL': JSON.stringify(process.env.BACKEND_API_URL),
       'process.env.REPLICATE_API_KEY': JSON.stringify(process.env.REPLICATE_API_KEY),
-      'process.env.NEWS_API_KEY': JSON.stringify(process.env.NEWS_API_KEY)
+      'process.env.NEWS_API_KEY': JSON.stringify(process.env.NEWS_API_KEY),
+      'process.env.VROID_HUB_CLIENT_ID': JSON.stringify(process.env.VROID_HUB_CLIENT_ID),
+      'process.env.VROID_HUB_CLIENT_SECRET': JSON.stringify(process.env.VROID_HUB_CLIENT_SECRET)
     }),
     new webpack.ProvidePlugin({
       process: 'process/browser.js'

@@ -318,7 +318,7 @@ function CameraInteractionOverlay({ cameraConfig, onCameraChange }) {
 }
 
 // VRMモデルコンポーネント
-function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = true, onMotionReady, emotion = 'neutral', emotionIntensity = 0.5, isTyping = false, gesture = null, isSpeaking = false, currentSpeechText = '', cameraConfig = { position: [0,1.4,2.5], fov: 50, lookAt: [0,1,0] }, onInteraction, enableCameraFollow = false, onCameraChange, overlayBlendRatio = 1.0, onTapEffect, vrmScale = 1.0 }) {
+function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = true, onMotionReady, emotion = 'neutral', emotionIntensity = 0.5, isTyping = false, gesture = null, isSpeaking = false, currentSpeechText = '', cameraConfig = { position: [0,1.4,2.5], fov: 50, lookAt: [0,1,0] }, onInteraction, enableCameraFollow = false, onCameraChange, overlayBlendRatio = 1.0, onTapEffect, vrmScale = 1.0, enableManualCamera = true }) {
   const { scene, camera, gl } = useThree();
   const vrmRef = useRef();
   const gestureManagerRef = useRef();
@@ -689,6 +689,11 @@ function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = t
               vrmGrabStateRef.current.grabbedBoneOriginalPos = grabbedBoneOriginalPos;
               vrmGrabStateRef.current.grabbedBoneOriginalRot = grabbedBoneOriginalRot;
 
+              // カーソルをgrabbing（掴んでいる手）に変更
+              if (!enableManualCamera && gl.domElement) {
+                gl.domElement.style.cursor = 'grabbing';
+              }
+
               console.log('[VRM Grab] Grabbed bone:', grabbedBone.name);
 
               // グラブインタラクションコールバックを呼ぶ
@@ -939,8 +944,8 @@ function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = t
         vrmGrabStateRef.current.grabbedBoneOriginalPos = null;
         vrmGrabStateRef.current.grabbedBoneOriginalRot = null;
 
-        // カーソルをgrabに戻す
-        if (enableInteraction) {
+        // カーソルをgrab（開いた手）に戻す
+        if (!enableManualCamera && gl.domElement) {
           gl.domElement.style.cursor = 'grab';
         }
 
@@ -1174,8 +1179,8 @@ function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = t
 
     const canvas = gl.domElement;
 
-    // カーソルスタイルを設定
-    if (enableInteraction) {
+    // カーソルスタイルを設定（お触りモードのときのみgrab）
+    if (enableInteraction && !enableManualCamera) {
       canvas.style.cursor = 'grab';
     } else {
       canvas.style.cursor = 'default';
@@ -1198,7 +1203,7 @@ function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = t
       canvas.removeEventListener('mouseup', handleMouseUp);
       canvas.style.cursor = 'default';
     };
-  }, [enableMouseFollow, enableInteraction, camera, gl, onInteraction]);
+  }, [enableMouseFollow, enableInteraction, enableManualCamera, camera, gl, onInteraction]);
 
   useEffect(() => {
     if (!enableMouseFollow) {
@@ -1834,7 +1839,7 @@ function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = t
 }
 
 // MMDモデルコンポーネント
-function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onMeshReady, onInteraction, tapMotionUrls = [], petMotionUrls = [], onMmdInteractionMotion, helperRef: parentHelperRef, sceneRef: parentSceneRef, clonedMeshRef: parentClonedMeshRef, enableCameraFollow = false, onCameraChange, cameraConfig, targetLoopCount = 3, onLoopComplete, enablePhysicsRef, enablePhysics, enablePmxAnimation, enableSimplePhysics = false, onTapEffect, isSpeaking = false, currentSpeechText = '', mmdScale = 0.09, mmdShininess = 50, mmdBrightness = 1.0, enableInteraction = true }) {
+function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onMeshReady, onInteraction, tapMotionUrls = [], petMotionUrls = [], onMmdInteractionMotion, helperRef: parentHelperRef, sceneRef: parentSceneRef, clonedMeshRef: parentClonedMeshRef, enableCameraFollow = false, onCameraChange, cameraConfig, targetLoopCount = 3, onLoopComplete, enablePhysicsRef, enablePhysics, enablePmxAnimation, enableSimplePhysics = false, onTapEffect, isSpeaking = false, currentSpeechText = '', mmdScale = 0.09, mmdShininess = 50, mmdBrightness = 1.0, enableInteraction = true, enableManualCamera = true }) {
   // fileMap: Map<filename, objectURL>
 
   const { scene, camera, gl } = useThree();
@@ -3119,6 +3124,11 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
               mmdGrabStateRef.current.grabbedBone = mmdGrabbedBone;
               mmdGrabStateRef.current.grabHitDistance = mmdGrabHitPoint.distanceTo(camera.position);
 
+              // カーソルをgrabbing（掴んでいる手）に変更
+              if (!enableManualCamera && gl.domElement) {
+                gl.domElement.style.cursor = 'grabbing';
+              }
+
               console.log('[MMD Grab] Grabbed bone:', mmdGrabbedBone.name);
 
               // グラブインタラクションコールバックを呼ぶ
@@ -3277,6 +3287,11 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
                 mmdGrabStateRef.current.grabbedBone = mmdGrabbedBone;
                 mmdGrabStateRef.current.grabHitDistance = mmdGrabHitPoint.distanceTo(camera.position);
 
+                // カーソルをgrabbing（掴んでいる手）に変更
+                if (!enableManualCamera && gl.domElement) {
+                  gl.domElement.style.cursor = 'grabbing';
+                }
+
                 console.log('[MMD Grab] Grabbed bone:', mmdGrabbedBone.name);
 
                 // グラブインタラクションコールバックを呼ぶ
@@ -3362,8 +3377,8 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
         mmdGrabStateRef.current.targetWorldPos = null;
         mmdGrabStateRef.current.grabHitDistance = null;
 
-        // カーソルをgrabに戻す
-        if (enableInteraction) {
+        // カーソルをgrab（開いた手）に戻す
+        if (!enableManualCamera && gl.domElement) {
           gl.domElement.style.cursor = 'grab';
         }
 
@@ -3798,8 +3813,8 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
 
     const canvas = gl.domElement;
 
-    // カーソルスタイルを設定
-    if (enableInteraction) {
+    // カーソルスタイルを設定（お触りモードのときのみgrab）
+    if (enableInteraction && !enableManualCamera) {
       canvas.style.cursor = 'grab';
     } else {
       canvas.style.cursor = 'default';
@@ -3815,7 +3830,7 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
       canvas.removeEventListener('mouseup', handleMMDMouseUp);
       canvas.style.cursor = 'default';
     };
-  }, [camera, gl, enableInteraction]);
+  }, [camera, gl, enableInteraction, enableManualCamera]);
 
   useFrame((_, delta) => {
     const helper = helperRef.current;
@@ -4934,11 +4949,17 @@ const VRMViewer = forwardRef(({ modelUrl, modelType = 'auto', onMotionReady, ena
   const mmdClonedMeshRef = parentClonedMeshRef || useRef(null);
   const [tapEffects, setTapEffects] = useState([]);
   const enablePhysicsRef = useRef(enablePhysics);
+  const mmdBrightnessRef = useRef(mmdBrightness);
 
   // enablePhysicsの変更を追跡
   useEffect(() => {
     enablePhysicsRef.current = enablePhysics;
   }, [enablePhysics]);
+
+  // mmdBrightnessの変更を追跡
+  useEffect(() => {
+    mmdBrightnessRef.current = mmdBrightness;
+  }, [mmdBrightness]);
 
   // タップエフェクトを追加
   const handleTapEffect = (x, y) => {
@@ -5064,28 +5085,38 @@ const VRMViewer = forwardRef(({ modelUrl, modelType = 'auto', onMotionReady, ena
       newMesh.userData.initializeMmdLipSyncTargets = mesh.userData?.initializeMmdLipSyncTargets;
 
       // ★重要：マテリアル情報を再収集（クローンされたmeshから直接取得）
+      // クローン後のマテリアルは明るさが適用された状態なので、元の色に戻してから保存
       console.time('[VRMViewer] Collect originalMaterials');
       const newOriginalMaterials = [];
+      const currentBrightness = mmdBrightnessRef.current || 1.0;
       newMesh.traverse((child) => {
         if (child.material) {
           if (Array.isArray(child.material)) {
             child.material.forEach(mat => {
+              // 現在の色を明るさで除算して元の色に戻す
+              const originalColor = mat.color && currentBrightness > 0
+                ? mat.color.clone().multiplyScalar(1.0 / currentBrightness)
+                : (mat.color ? mat.color.clone() : null);
               newOriginalMaterials.push({
                 material: mat,
-                originalColor: mat.color ? mat.color.clone() : null
+                originalColor: originalColor
               });
             });
           } else {
+            // 現在の色を明るさで除算して元の色に戻す
+            const originalColor = child.material.color && currentBrightness > 0
+              ? child.material.color.clone().multiplyScalar(1.0 / currentBrightness)
+              : (child.material.color ? child.material.color.clone() : null);
             newOriginalMaterials.push({
               material: child.material,
-              originalColor: child.material.color ? child.material.color.clone() : null
+              originalColor: originalColor
             });
           }
         }
       });
       newMesh.userData.originalMaterials = newOriginalMaterials;
       console.timeEnd('[VRMViewer] Collect originalMaterials');
-      console.log('[VRMViewer] Collected originalMaterials from newMesh:', newOriginalMaterials.length);
+      console.log('[VRMViewer] Collected originalMaterials from newMesh:', newOriginalMaterials.length, 'brightness:', currentBrightness);
 
       // マテリアル更新をトリガー（userDataにフラグを立てる）
       newMesh.userData.materialUpdateNeeded = true;
@@ -5298,6 +5329,7 @@ const VRMViewer = forwardRef(({ modelUrl, modelType = 'auto', onMotionReady, ena
             overlayBlendRatio={overlayBlendRatio}
             onTapEffect={handleTapEffect}
             vrmScale={vrmScale}
+            enableManualCamera={enableManualCamera}
           />
         ) : type === 'mmd' ? (
           <MMDModel
@@ -5330,6 +5362,7 @@ const VRMViewer = forwardRef(({ modelUrl, modelType = 'auto', onMotionReady, ena
             mmdShininess={mmdShininess}
             mmdBrightness={mmdBrightness}
             enableInteraction={enableInteraction}
+            enableManualCamera={enableManualCamera}
           />
         ) : type === 'unsupported' ? (
           <group>

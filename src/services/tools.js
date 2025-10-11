@@ -21,22 +21,6 @@ export const toolDefinitions = [
   },
   {
     type: 'function',
-    name: 'calculate',
-    description: '数式を計算します。四則演算、累乗、平方根などの計算が可能です。',
-    parameters: {
-      type: 'object',
-      properties: {
-        expression: {
-          type: 'string',
-          description: '計算式（例: \"2 + 2\", \"sqrt(16)\", \"2^3\"）'
-        }
-      },
-      required: ['expression'],
-      additionalProperties: false
-    }
-  },
-  {
-    type: 'function',
     name: 'set_timer',
     description: '指定時間後にタイマー通知を設定します。',
     parameters: {
@@ -82,27 +66,6 @@ export const toolDefinitions = [
     parameters: {
       type: 'object',
       properties: {},
-      additionalProperties: false
-    }
-  },
-  {
-    type: 'function',
-    name: 'translate_text',
-    description: 'テキストを翻訳します。',
-    parameters: {
-      type: 'object',
-      properties: {
-        text: {
-          type: 'string',
-          description: '翻訳するテキスト'
-        },
-        target_lang: {
-          type: 'string',
-          enum: ['ja', 'en', 'zh', 'ko', 'fr', 'de', 'es', 'it', 'pt', 'ru'],
-          description: '翻訳先の言語コード（ja=日本語, en=英語, zh=中国語, ko=韓国語など）'
-        }
-      },
-      required: ['text', 'target_lang'],
       additionalProperties: false
     }
   },
@@ -380,36 +343,6 @@ export class ToolExecutor {
     }
   }
 
-  // 計算機
-  calculate(args) {
-    try {
-      // 安全な計算のため、許可された演算子と数値のみを使用
-      const expression = args.expression;
-
-      // 基本的な検証: 許可された文字のみかチェック
-      if (!/^[\d+\-*/(). sqrt]+$/i.test(expression)) {
-        return '計算エラー: 使用できるのは数字と演算子(+, -, *, /, ^, sqrt)のみです。';
-      }
-
-      // sqrt() を Math.sqrt() に変換
-      let safeExpr = expression
-        .replace(/sqrt\s*\(\s*([^)]+)\s*\)/gi, 'Math.sqrt($1)')
-        .replace(/\^/g, '**');
-
-      // Functionコンストラクタを使用（evalより安全）
-      const calculate = new Function('Math', `'use strict'; return (${safeExpr})`);
-      const result = calculate(Math);
-
-      if (!isFinite(result)) {
-        return '計算エラー: 結果が無限大または無効な値です。';
-      }
-
-      return `計算結果: ${result}`;
-    } catch (error) {
-      return '計算エラー: 式が正しくありません。';
-    }
-  }
-
   // タイマー設定
   set_timer(args) {
     // argsが文字列の場合はパース
@@ -479,33 +412,6 @@ export class ToolExecutor {
       return `保存されているメモ:\n\n${memoList}`;
     } catch (error) {
       return 'メモの取得に失敗しました。';
-    }
-  }
-
-  // テキスト翻訳（MyMemory Translation API使用 - 無料）
-  async translate_text(args) {
-    try {
-      const text = args.text;
-      const targetLang = args.target_lang;
-
-      // 翻訳元の言語を自動検出
-      const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=auto|${targetLang}`;
-
-      const response = await fetch(url);
-      const data = await response.json();
-
-      if (data.responseStatus !== 200) {
-        return '翻訳に失敗しました。';
-      }
-
-      const translatedText = data.responseData.translatedText;
-      const detectedLang = data.responseData.match?.split('-')[0] || '不明';
-
-      return `翻訳結果 (${detectedLang} → ${targetLang}):\n${translatedText}`;
-
-    } catch (error) {
-      console.error('Translation API error:', error);
-      return '翻訳の取得に失敗しました。';
     }
   }
 

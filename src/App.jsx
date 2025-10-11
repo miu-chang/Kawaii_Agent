@@ -14,6 +14,7 @@ import { saveImportedMotions, loadImportedMotions, saveFavoriteMotions, loadFavo
 import LicenseModal from './components/LicenseModal';
 import AboutModal from './components/AboutModal';
 import ConsentModal from './components/ConsentModal';
+import VRoidModelPicker from './components/VRoidModelPicker';
 import licenseApi from './services/licenseApi';
 import ttsModManager from './services/ttsModManager';
 
@@ -495,6 +496,8 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showVoiceSettings, setShowVoiceSettings] = useState(false); // 声質調整モーダル
   const [showAboutModal, setShowAboutModal] = useState(false); // Aboutモーダル
+  const [showModelSourceModal, setShowModelSourceModal] = useState(false); // モデル読み込み元選択モーダル
+  const [showVRoidPicker, setShowVRoidPicker] = useState(false); // VRoid Hubモデル選択
   const [installedMods, setInstalledMods] = useState([]); // インストール済みMod一覧
   const [showModManagement, setShowModManagement] = useState(false); // Mod管理セクション開閉
   const [hideVoicevoxNotice, setHideVoicevoxNotice] = useState(() => {
@@ -797,6 +800,7 @@ function App() {
   const [isResidentTouchMode, setIsResidentTouchMode] = useState(false); // 常駐モード時のお触りモード
   const [showResidentChat, setShowResidentChat] = useState(false);
   const residentChatEndRef = useRef(null);
+  const residentChatContainerRef = useRef(null); // チャットコンテナのref
   const [capturedImage, setCapturedImage] = useState(null); // 画面キャプチャ画像
   const [isCapturing, setIsCapturing] = useState(false); // キャプチャ中フラグ
   const [timerReminderInterval, setTimerReminderInterval] = useState(null); // タイマー通知の繰り返しインターバル
@@ -854,8 +858,9 @@ function App() {
 
   // 常駐モードチャットの自動スクロール
   useEffect(() => {
-    if (showResidentChat && residentChatEndRef.current) {
-      residentChatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (showResidentChat && residentChatContainerRef.current) {
+      // scrollIntoViewではなくscrollTopを使うことで、ウィンドウが動かないようにする
+      residentChatContainerRef.current.scrollTop = residentChatContainerRef.current.scrollHeight;
     }
   }, [chatHistory, showResidentChat]);
 
@@ -3105,9 +3110,9 @@ ${basePrompt}${interactionDetails}
     }
   }, [isSpeaking, isTyping, timerReminderInterval]);
 
-  // 画面キャプチャハンドラ
+  // 画面キャプチャハンドラ（画像のみキャプチャ、送信はしない）
   const handleScreenCapture = async () => {
-    if (isCapturing) return;
+    if (isCapturing) return null;
 
     try {
       setIsCapturing(true);
@@ -3122,16 +3127,13 @@ ${basePrompt}${interactionDetails}
           role: 'system',
           content: `❌ ${result.error}`
         }]);
-        return;
+        return null;
       }
 
       // キャプチャ成功
       console.log('[Screen Capture] Captured successfully');
       setCapturedImage(result.image);
-
-      // 自動的に質問を送信
-      const defaultQuestion = message.trim() || 'この画面について教えて';
-      await handleSendMessage(false, defaultQuestion, result.image);
+      return result.image;
 
     } catch (error) {
       console.error('[Screen Capture] Error:', error);
@@ -3139,6 +3141,7 @@ ${basePrompt}${interactionDetails}
         role: 'system',
         content: `❌ キャプチャエラー: ${error.message}`
       }]);
+      return null;
     } finally {
       setIsCapturing(false);
     }
@@ -3148,15 +3151,22 @@ ${basePrompt}${interactionDetails}
     const messageToSend = directMessage || message;
     if (!messageToSend.trim()) return;
 
+    // 画像の優先順位: 1. 引数で渡された画像, 2. キャプチャ済み画像, 3. キーワード検出で自動キャプチャ
+    let imageToSend = imageBase64 || capturedImage;
+
     // 「画面」「スクショ」などのキーワードを検出して自動キャプチャ（画像がまだない場合のみ）
-    if (!imageBase64) {
+    if (!imageToSend) {
       const screenKeywords = ['画面', 'スクショ', 'スクリーンショット', '見て', 'この'];
       const hasScreenKeyword = screenKeywords.some(keyword => messageToSend.includes(keyword));
 
       if (hasScreenKeyword && !isCapturing) {
         console.log('[Auto Capture] Screen keyword detected:', messageToSend);
-        await handleScreenCapture();
-        return;
+        // スクショを撮って、ユーザーのメッセージと一緒に送信
+        imageToSend = await handleScreenCapture();
+        if (!imageToSend) {
+          // キャプチャ失敗時は処理を中断
+          return;
+        }
       }
     }
 
@@ -3174,7 +3184,7 @@ ${basePrompt}${interactionDetails}
 
     // チャット履歴に追加（画像がある場合は📸アイコンを付ける）
     const userMessage = messageToSend;
-    const displayMessage = imageBase64 ? `📸 ${userMessage}` : userMessage;
+    const displayMessage = imageToSend ? `📸 ${userMessage}` : userMessage;
     setChatHistory(prev => [...prev, { role: 'user', content: displayMessage }]);
     setMessage('');
     setIsTyping(true);
@@ -3192,12 +3202,12 @@ ${basePrompt}${interactionDetails}
       let assistantMessage = '';
 
       // 画像がある場合は画像付きチャット（Function Callingなし）
-      if (imageBase64) {
+      if (imageToSend) {
         console.log('[Chat] Sending message with image:', userMessage);
         try {
           assistantMessage = await aiService.chatWithImage(
             userMessage,
-            imageBase64,
+            imageToSend,
             (chunk, fullText) => {
               // リアルタイムでチャット履歴を更新
               setChatHistory(prev => {
@@ -6663,6 +6673,46 @@ ${assistantMessage}`,
           </div>
 
           <div className="chat-input">
+          {capturedImage && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              marginBottom: '8px',
+              padding: '8px',
+              background: 'rgba(156, 39, 176, 0.1)',
+              borderRadius: '4px',
+              border: '1px solid rgba(156, 39, 176, 0.3)'
+            }}>
+              <img
+                src={`data:image/png;base64,${capturedImage}`}
+                alt="Captured"
+                style={{
+                  width: '50px',
+                  height: '50px',
+                  objectFit: 'cover',
+                  borderRadius: '4px',
+                  marginRight: '8px'
+                }}
+              />
+              <span style={{ flex: 1, fontSize: '14px', color: '#9C27B0' }}>
+                📸 スクリーンショットを添付
+              </span>
+              <button
+                onClick={() => setCapturedImage(null)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#9C27B0',
+                  cursor: 'pointer',
+                  fontSize: '18px',
+                  padding: '4px 8px'
+                }}
+                title="画像を削除"
+              >
+                ×
+              </button>
+            </div>
+          )}
           <input
             ref={inputRef}
             type="text"
@@ -6704,7 +6754,7 @@ ${assistantMessage}`,
             onClick={handleScreenCapture}
             disabled={isCapturing || aiStatus !== 'ready'}
             style={{
-              background: isCapturing ? '#FF9800' : '#9C27B0',
+              background: isCapturing ? '#FF9800' : (capturedImage ? '#4CAF50' : '#9C27B0'),
               color: 'white',
               border: 'none',
               padding: '10px',
@@ -6713,6 +6763,7 @@ ${assistantMessage}`,
               marginRight: '5px',
               opacity: (isCapturing || aiStatus !== 'ready') ? 0.5 : 1
             }}
+            title={capturedImage ? 'スクショ済み（クリックで再撮影）' : 'スクリーンショットを撮る'}
           >
             <i className="fas fa-camera"></i>
           </button>
@@ -6720,9 +6771,23 @@ ${assistantMessage}`,
         </div>
 
         <div className="file-input">
-          <label htmlFor="model-file">モデルファイル選択</label>
+          <button
+            onClick={() => setShowModelSourceModal(true)}
+            style={{
+              background: '#2196F3',
+              color: 'white',
+              border: 'none',
+              padding: '10px 20px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '14px'
+            }}
+          >
+            モデルファイル選択
+          </button>
           <input
             id="model-file"
+            ref={fileInputRef => window.modelFileInput = fileInputRef}
             type="file"
             accept=".vrm,.pmx,.pmd,.zip"
             multiple
@@ -6865,6 +6930,7 @@ ${assistantMessage}`,
           >
             {/* チャット履歴 */}
             <div
+              ref={residentChatContainerRef}
               style={{
                 flex: 1,
                 overflowY: 'auto',
@@ -6944,6 +7010,96 @@ ${assistantMessage}`,
         isOpen={showAboutModal}
         onClose={() => setShowAboutModal(false)}
       />
+
+      {/* モデル読み込み元選択モーダル */}
+      {showModelSourceModal && (
+        <div className="modal-overlay" onClick={() => setShowModelSourceModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+            <h3>モデル読み込み</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
+              <button
+                onClick={() => {
+                  setShowModelSourceModal(false);
+                  window.modelFileInput?.click();
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '12px 15px',
+                  background: 'rgba(33, 150, 243, 0.1)',
+                  border: '1px solid rgba(33, 150, 243, 0.3)',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(33, 150, 243, 0.2)';
+                  e.currentTarget.style.borderColor = 'rgba(33, 150, 243, 0.5)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(33, 150, 243, 0.1)';
+                  e.currentTarget.style.borderColor = 'rgba(33, 150, 243, 0.3)';
+                }}
+              >
+                <i className="fas fa-folder-open" style={{ fontSize: '20px', color: '#2196F3', minWidth: '20px' }}></i>
+                <div style={{ textAlign: 'left', flex: 1 }}>
+                  <div style={{ fontWeight: '500', fontSize: '14px' }}>ローカルファイル</div>
+                  <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>VRM/PMX/PMDファイルを選択</div>
+                </div>
+              </button>
+              <button
+                onClick={() => {
+                  setShowModelSourceModal(false);
+                  setShowVRoidPicker(true);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '12px 15px',
+                  background: 'rgba(156, 39, 176, 0.1)',
+                  border: '1px solid rgba(156, 39, 176, 0.3)',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(156, 39, 176, 0.2)';
+                  e.currentTarget.style.borderColor = 'rgba(156, 39, 176, 0.5)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(156, 39, 176, 0.1)';
+                  e.currentTarget.style.borderColor = 'rgba(156, 39, 176, 0.3)';
+                }}
+              >
+                <i className="fas fa-cloud" style={{ fontSize: '20px', color: '#9C27B0', minWidth: '20px' }}></i>
+                <div style={{ textAlign: 'left', flex: 1 }}>
+                  <div style={{ fontWeight: '500', fontSize: '14px' }}>VRoid Hub</div>
+                  <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>オンラインからキャラクターを選択</div>
+                </div>
+              </button>
+            </div>
+            <button onClick={() => setShowModelSourceModal(false)} style={{ marginTop: '15px', width: '100%' }}>
+              キャンセル
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* VRoid Hub モデル選択 */}
+      {showVRoidPicker && (
+        <VRoidModelPicker
+          onSelect={(model) => {
+            console.log('[App] VRoid model selected:', model);
+            // VRMファイルのURLを使ってモデルを読み込み
+            setModelUrl(model.url);
+            setModelType('vrm');
+            setShowVRoidPicker(false);
+          }}
+          onClose={() => setShowVRoidPicker(false)}
+        />
+      )}
       </div>
   );
 }

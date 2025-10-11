@@ -37,5 +37,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Parler-TTSサーバー管理
   startParlerTTSServer: () => ipcRenderer.invoke('start-parler-tts-server'),
-  stopParlerTTSServer: () => ipcRenderer.invoke('stop-parler-tts-server')
+  stopParlerTTSServer: () => ipcRenderer.invoke('stop-parler-tts-server'),
+
+  // VRoid Hub OAuth
+  onVRoidOAuthCode: (callback) => {
+    ipcRenderer.on('vroid-oauth-code', (event, code) => callback(code));
+  },
+  onVRoidOAuthError: (callback) => {
+    ipcRenderer.on('vroid-oauth-error', (event, error) => callback(error));
+  }
 });

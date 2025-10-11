@@ -173,13 +173,7 @@ class AIService {
    - カレンダー: "予定追加"、"スケジュール"など
      → add_calendar_event を使用
 
-3. 計算・変換（必須）:
-   - 計算: "計算"、"いくつ"など
-     → calculate を使用
-   - 翻訳: "翻訳して"など
-     → translate_text を使用
-
-4. ファイル・システム操作（必須）:
+3. ファイル・システム操作（必須）:
    - ファイル: "ファイル読んで"、"ファイル一覧"など
      → read_file、list_files を使用
    - アプリ起動: "Chrome開いて"、"VSCode起動"など
@@ -459,40 +453,17 @@ class AIService {
         }
       ];
 
-      console.log('[AIService] Input prepared, calling Responses API...');
+      console.log('[AIService] Input prepared, calling API...');
       console.log('[AIService] Model:', this.model);
 
-      // Responses APIを呼び出し（ストリーミング）
-      const stream = await this.openai.responses.create({
+      // licenseApi経由でOpenAI APIを呼び出し
+      const fullResponse = await licenseApi.chat(input, {
         model: this.model,
-        input: input,
         stream: true,
+        onStream: onStream
       });
 
-      console.log('[AIService] Stream created, processing chunks...');
-      let fullResponse = '';
-
-      // ストリーミングレスポンスを処理
-      for await (const chunk of stream) {
-        console.log('[AIService] Chunk received:', chunk.type);
-
-        // テキストデルタイベント
-        if (chunk.type === 'response.output_text.delta' && chunk.delta) {
-          fullResponse += chunk.delta;
-          if (onStream) {
-            onStream(chunk.delta, fullResponse);
-          }
-        }
-        // テキスト完了イベント（フォールバック）
-        else if (chunk.type === 'response.output_text.done' && chunk.text) {
-          fullResponse = chunk.text;
-          if (onStream) {
-            onStream(chunk.text, fullResponse);
-          }
-        }
-      }
-
-      console.log('[AIService] Stream completed. Full response length:', fullResponse.length);
+      console.log('[AIService] Response completed. Full response length:', fullResponse.length);
 
       // アシスタントの返答を履歴に追加
       this.conversationHistory.push({
@@ -566,36 +537,24 @@ class AIService {
         }
       ];
 
-      // Responses APIを呼び出し（ストリーミング）
-      const stream = await this.openai.responses.create({
+      // licenseApi経由でOpenAI APIを呼び出し
+      const fullResponse = await licenseApi.chat(input, {
         model: this.model,
-        input: input,
         stream: true,
-      });
-
-      let fullResponse = '';
-
-      // ストリーミングレスポンスを処理
-      for await (const chunk of stream) {
-        if (chunk.type === 'response.output_text.delta' && chunk.delta) {
-          fullResponse += chunk.delta;
-
+        onStream: (delta, fullText) => {
           if (onStream) {
             // JSONパース試行
             try {
-              const partial = JSON.parse(fullResponse);
+              const partial = JSON.parse(fullText);
               if (partial.display) {
-                onStream(chunk.delta, partial.display);
+                onStream(delta, partial.display);
               }
             } catch (e) {
               // JSONが完成していない場合は何もしない
             }
           }
         }
-        else if (chunk.type === 'response.output_text.done' && chunk.text) {
-          fullResponse = chunk.text;
-        }
-      }
+      });
 
       // JSONパース
       let parsedResponse = null;

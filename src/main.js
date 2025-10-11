@@ -1,6 +1,7 @@
 require('dotenv').config();
 const { app, BrowserWindow, ipcMain, screen, session, desktopCapturer } = require('electron');
 const path = require('path');
+const http = require('http');
 
 // 安全なログ出力関数（EPIPEエラー対策）
 function safeLog(...args) {
@@ -154,6 +155,126 @@ function createWindow() {
 
   console.log(`Created window ${windowId}. Total windows: ${windows.length}`);
   return newWindow;
+}
+
+// カスタムプロトコル (kawaii-agent://) の登録
+if (process.defaultApp) {
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient('kawaii-agent', process.execPath, [path.resolve(process.argv[1])]);
+  }
+} else {
+  app.setAsDefaultProtocolClient('kawaii-agent');
+}
+
+// VRoid Hub OAuth コールバック処理用の変数
+let vroidOAuthCallback = null;
+
+// プロトコルURLを受け取る（macOS）
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  console.log('[VRoid Hub] Received protocol URL:', url);
+  handleVRoidOAuthCallback(url);
+});
+
+// シングルインスタンスロック（Windows/Linux用）
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', (event, commandLine) => {
+    // kawaii-agent:// で起動された場合
+    const url = commandLine.find(arg => arg.startsWith('kawaii-agent://'));
+    if (url) {
+      console.log('[VRoid Hub] Received protocol URL (second-instance):', url);
+      handleVRoidOAuthCallback(url);
+    }
+
+    // ウィンドウにフォーカス
+    if (windows.length > 0) {
+      const mainWindow = windows[0].window;
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+}
+
+// VRoid Hub OAuth コールバック処理
+function handleVRoidOAuthCallback(url) {
+  try {
+    const urlObj = new URL(url);
+
+    // kawaii-agent://callback?code=xxx の形式
+    if (urlObj.protocol === 'kawaii-agent:' && urlObj.hostname === 'callback') {
+      const code = urlObj.searchParams.get('code');
+      const error = urlObj.searchParams.get('error');
+
+      if (error) {
+        console.error('[VRoid Hub] OAuth error:', error);
+        // レンダラープロセスにエラーを通知
+        if (windows.length > 0) {
+          windows[0].window.webContents.send('vroid-oauth-error', error);
+        }
+        return;
+      }
+
+      if (code) {
+        console.log('[VRoid Hub] OAuth code received:', code.substring(0, 10) + '...');
+        // レンダラープロセスにコードを送信
+        if (windows.length > 0) {
+          windows[0].window.webContents.send('vroid-oauth-code', code);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('[VRoid Hub] Failed to parse OAuth callback URL:', error);
+  }
+}
+
+// VRoid Hub OAuth用ローカルサーバー（開発中のみ）
+let oauthServer = null;
+// 常にローカルサーバーを起動（パッケージ化されたアプリではカスタムプロトコルを使用）
+if (true) {
+  oauthServer = http.createServer((req, res) => {
+    const url = new URL(req.url, 'http://localhost:3456');
+
+    if (url.pathname === '/callback') {
+      const code = url.searchParams.get('code');
+      const error = url.searchParams.get('error');
+
+      // HTMLレスポンスを返す
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(`
+        <html>
+          <head><title>VRoid Hub 認証</title></head>
+          <body>
+            <h2>認証完了</h2>
+            <p>このウィンドウを閉じて、アプリに戻ってください。</p>
+            <script>window.close();</script>
+          </body>
+        </html>
+      `);
+
+      // Electronアプリにコードを送信
+      if (error) {
+        console.error('[VRoid Hub] OAuth error:', error);
+        if (windows.length > 0) {
+          windows[0].window.webContents.send('vroid-oauth-error', error);
+        }
+      } else if (code) {
+        console.log('[VRoid Hub] OAuth code received:', code.substring(0, 10) + '...');
+        if (windows.length > 0) {
+          windows[0].window.webContents.send('vroid-oauth-code', code);
+        }
+      }
+    } else {
+      res.writeHead(404);
+      res.end('Not Found');
+    }
+  });
+
+  oauthServer.listen(3456, () => {
+    console.log('[VRoid Hub] OAuth callback server listening on http://localhost:3456');
+  });
 }
 
 // Electronの初期化完了後にウィンドウを作成

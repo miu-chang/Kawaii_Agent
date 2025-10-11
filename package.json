@@ -55,6 +55,10 @@
   "build": {
     "appId": "com.miuchang.kawaiiagent",
     "productName": "Kawaii Agent",
+    "protocols": {
+      "name": "Kawaii Agent",
+      "schemes": ["kawaii-agent"]
+    },
     "files": [
       "dist/**/*",
       "src/main.js",
