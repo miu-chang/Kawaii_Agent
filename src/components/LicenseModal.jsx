@@ -165,6 +165,39 @@ export default function LicenseModal({ isOpen, onClose, onLicenseActivated }) {
                 ライセンスは<a href="https://booth.pm" target="_blank" style={styles.link}>BOOTH</a>で購入できます
               </p>
             </div>
+
+            {/* ロードマップ */}
+            <div style={styles.roadmapSection}>
+              <h3 style={styles.roadmapTitle}>
+                <i className="fas fa-map" style={{ marginRight: '8px' }}></i>
+                開発ロードマップ
+              </h3>
+              <div style={styles.roadmapItem}>
+                <i className="fas fa-mobile-alt" style={styles.roadmapIcon}></i>
+                <div style={styles.roadmapContent}>
+                  <div style={styles.roadmapLabel}>モバイル対応</div>
+                  <div style={styles.roadmapDesc}>iOS/Android向けアプリ開発中</div>
+                </div>
+              </div>
+              <div style={styles.roadmapItem}>
+                <i className="fas fa-globe" style={styles.roadmapIcon}></i>
+                <div style={styles.roadmapContent}>
+                  <div style={styles.roadmapLabel}>クロスプラットフォーム</div>
+                  <div style={styles.roadmapDesc}>Web版・モバイル版でもご利用可能に</div>
+                </div>
+              </div>
+              <div style={styles.roadmapItem}>
+                <i className="fas fa-laptop" style={styles.roadmapIcon}></i>
+                <div style={styles.roadmapContent}>
+                  <div style={styles.roadmapLabel}>ライセンス共有</div>
+                  <div style={styles.roadmapDesc}>1つのライセンスで複数デバイス利用可能（台数制限あり）</div>
+                </div>
+              </div>
+              <p style={styles.roadmapNote}>
+                <i className="fas fa-info-circle" style={{ marginRight: '5px' }}></i>
+                既存のライセンスで新機能もご利用いただけます
+              </p>
+            </div>
           </div>
         )}
       </div>
@@ -345,5 +378,61 @@ const styles = {
   link: {
     color: 'rgba(100, 200, 255, 0.9)',
     textDecoration: 'none'
+  },
+  roadmapSection: {
+    marginTop: '24px',
+    padding: '16px',
+    backgroundColor: 'rgba(100, 150, 255, 0.05)',
+    border: '1px solid rgba(100, 150, 255, 0.2)',
+    borderRadius: '12px'
+  },
+  roadmapTitle: {
+    margin: '0 0 16px 0',
+    fontSize: '15px',
+    color: 'rgba(100, 200, 255, 0.9)',
+    fontWeight: 'bold',
+    display: 'flex',
+    alignItems: 'center'
+  },
+  roadmapItem: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    marginBottom: '12px',
+    padding: '12px',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: '8px',
+    border: '1px solid rgba(255, 255, 255, 0.05)'
+  },
+  roadmapIcon: {
+    color: 'rgba(100, 200, 255, 0.8)',
+    fontSize: '18px',
+    marginRight: '12px',
+    marginTop: '2px',
+    minWidth: '18px'
+  },
+  roadmapContent: {
+    flex: 1
+  },
+  roadmapLabel: {
+    color: '#ffffff',
+    fontSize: '13px',
+    fontWeight: 'bold',
+    marginBottom: '4px'
+  },
+  roadmapDesc: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: '11px',
+    lineHeight: '1.4'
+  },
+  roadmapNote: {
+    marginTop: '12px',
+    marginBottom: 0,
+    padding: '8px',
+    color: 'rgba(78, 204, 163, 0.9)',
+    fontSize: '11px',
+    textAlign: 'center',
+    backgroundColor: 'rgba(78, 204, 163, 0.1)',
+    borderRadius: '6px',
+    border: '1px solid rgba(78, 204, 163, 0.2)'
   }
 };
