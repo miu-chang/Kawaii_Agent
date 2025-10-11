@@ -20,7 +20,8 @@ export function XRModeSelector({
   vrmModel,
   onPlaceCharacter,
   onInteraction,
-  enableHandTracking = false
+  enableHandTracking = false,
+  onVRStateChange
 }) {
   const [currentMode, setCurrentMode] = useState('normal'); // normal / ar / vr / mr
   const [showModeSelector, setShowModeSelector] = useState(false);
@@ -309,6 +310,7 @@ export function XRModeSelector({
           isEnabled={true}
           enableMR={currentMode === 'mr'}
           onToggle={(enabled) => !enabled && setCurrentMode('normal')}
+          onVRStateChange={onVRStateChange}
         />
       )}
 

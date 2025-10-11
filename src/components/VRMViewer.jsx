@@ -5007,11 +5007,6 @@ const VRMViewer = forwardRef(({ modelUrl, modelType = 'auto', onMotionReady, ena
     }
   }, [modelUrl, modelType]);
 
-  const handleModelLoad = (model) => {
-    setIsLoaded(true);
-    console.log('Model loaded:', model);
-  };
-
   const mmdMeshRefSetter = useRef(null);
 
   const handleMmdMeshReady = (mesh, initialBones, setMeshRef) => {

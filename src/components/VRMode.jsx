@@ -9,7 +9,7 @@ import { VRButton } from 'three/examples/jsm/webxr/VRButton';
  * - ジャイロセンサーによる視点追従
  * - 擬似MR（VR + カメラパススルー）
  */
-export function VRMode({ threeRenderer, scene, camera, isEnabled, enableMR = false, onToggle }) {
+export function VRMode({ threeRenderer, scene, camera, isEnabled, enableMR = false, onToggle, onVRStateChange }) {
   const [isVRSupported, setIsVRSupported] = useState(false);
   const [isMRSupported, setIsMRSupported] = useState(false);
   const [isVRActive, setIsVRActive] = useState(false);
@@ -18,12 +18,14 @@ export function VRMode({ threeRenderer, scene, camera, isEnabled, enableMR = fal
   const stereoCamera = useRef(null);
   const vrSessionRef = useRef(null);
   const videoElementRef = useRef(null);
+  const isWebXRSupported = useRef(false);
 
   useEffect(() => {
     if (!threeRenderer) return;
 
     // WebXR対応チェック
     if ('xr' in navigator) {
+      isWebXRSupported.current = true;
       // VRサポートチェック
       navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
         setIsVRSupported(supported);
@@ -36,6 +38,7 @@ export function VRMode({ threeRenderer, scene, camera, isEnabled, enableMR = fal
         console.log('[VRMode] WebXR MR (AR) supported:', supported);
       });
     } else {
+      isWebXRSupported.current = false;
       console.log('[VRMode] WebXR not supported, using fallback stereo mode');
       setIsVRSupported(true); // フォールバックモードで有効化
     }
@@ -75,6 +78,17 @@ export function VRMode({ threeRenderer, scene, camera, isEnabled, enableMR = fal
 
     console.log('[VRMode] Stereo camera initialized');
   }, [camera]);
+
+  // VR状態を親に通知
+  useEffect(() => {
+    if (onVRStateChange) {
+      onVRStateChange({
+        isActive: isVRActive,
+        stereoCamera: stereoCamera.current,
+        needsStereoRendering: isVRActive && !isWebXRSupported.current
+      });
+    }
+  }, [isVRActive, onVRStateChange]);
 
   // カードボードモード（手動ステレオ描画）
   const enableCardboardMode = () => {

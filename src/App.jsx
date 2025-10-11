@@ -539,6 +539,11 @@ function App() {
     const saved = localStorage.getItem('enableHandTracking');
     return saved === 'true';
   });
+  const [vrState, setVRState] = useState({
+    isActive: false,
+    stereoCamera: null,
+    needsStereoRendering: false
+  });
 
   // enablePhysicsの変更をRefに同期
   useEffect(() => {
@@ -6966,6 +6971,7 @@ ${assistantMessage}`,
           }}
           onInteraction={handleInteraction}
           enableHandTracking={enableHandTracking}
+          onVRStateChange={setVRState}
         />
       )}
 
