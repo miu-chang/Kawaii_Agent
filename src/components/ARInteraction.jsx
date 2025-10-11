@@ -5,7 +5,7 @@ import handTrackingService from '../services/handTrackingService';
 /**
  * AR/MRインタラクション統合コンポーネント
  * 1. タッチベース（メイン機能）
- * 2. 手検出ベース（実験機能）
+ * 2. 手検出ベース（拡張機能）
  */
 export function ARInteraction({
   scene,
@@ -88,7 +88,7 @@ export function ARInteraction({
   };
 
   // ========================================
-  // 手検出ベースインタラクション（実験機能）
+  // 手検出ベースインタラクション（拡張機能）
   // ========================================
 
   useEffect(() => {

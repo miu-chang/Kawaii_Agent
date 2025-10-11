@@ -6,7 +6,7 @@ class VoicePrintService {
     this.threshold = 0.95; // 類似度の閾値（95%以上で本人判定）
     this.minThreshold = 0.80; // 最小類似度閾値（全サンプルでこれ以上必要）
     this.useGMM = false; // GMM使用フラグ（将来の拡張用）
-    this.gmmModels = []; // GMMモデル（実験的機能）
+    this.gmmModels = []; // GMMモデル（拡張機能）
     this.loadVoicePrints();
   }
 
@@ -224,7 +224,7 @@ class VoicePrintService {
     return isPassed;
   }
 
-  // GMM検証（実験的機能）
+  // GMM検証（拡張機能）
   verifyVoiceWithGMM(audioBuffer, sampleRate = 16000) {
     if (!this.useGMM || this.gmmModels.length === 0) {
       console.warn('[VoicePrint] GMM not enabled or not trained');

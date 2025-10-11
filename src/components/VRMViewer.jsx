@@ -4205,7 +4205,7 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
       mesh.userData.tapAnimations = activeAnimations;
     }
 
-    // 簡易物理演算（軽量版・実験的）
+    // 簡易物理演算（軽量版）
     if (enableSimplePhysics && mesh && mesh.skeleton) {
       // PMX物理設定の確認（デバッグ）
       if (!window.__pmxPhysicsChecked) {

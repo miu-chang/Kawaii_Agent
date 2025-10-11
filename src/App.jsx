@@ -4922,9 +4922,9 @@ ${assistantMessage}`,
             }}
           />
 
-          {/* 実験機能セクション */}
-          <h4 style={{ color: '#fff', marginBottom: '10px', fontSize: '14px', marginTop: '20px' }}>🧪 実験機能</h4>
-          <div style={{ marginBottom: '15px', background: 'rgba(255,165,0,0.1)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,165,0,0.3)' }}>
+          {/* 拡張機能セクション */}
+          <h4 style={{ color: '#fff', marginBottom: '10px', fontSize: '14px', marginTop: '20px' }}>✨ 拡張機能</h4>
+          <div style={{ marginBottom: '15px', background: 'rgba(100,150,255,0.1)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(100,150,255,0.3)' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fff', fontSize: '12px', cursor: 'pointer', marginBottom: '8px' }}>
               <input
                 type="checkbox"
@@ -4935,7 +4935,7 @@ ${assistantMessage}`,
               手検出インタラクション（AR/MRモード）
             </label>
             <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '10px', margin: '0', marginLeft: '24px', lineHeight: '1.4' }}>
-              ⚠️ ベータ版機能です。AR/MRモードでカメラから手を検出し、ジェスチャーインタラクション（ピンチ・撫でる・グラブ・挨拶・抱きしめ）が可能になります。<br/>
+              💡 AR/MRモードで手を検出し、ジェスチャーインタラクション（ピンチ・撫でる・グラブ・挨拶・抱きしめ）が可能になります。<br/>
               カメラ使用によりバッテリー消費が増加します。推奨環境: iPhone 11以降、ハイエンドAndroid
             </p>
           </div>
@@ -5585,7 +5585,7 @@ ${assistantMessage}`,
                 }}
                 style={{ cursor: 'pointer' }}
               />
-              簡易物理演算を有効にする（軽量版・実験的）
+              簡易物理演算を有効にする（軽量版）
             </label>
             <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '10px', marginTop: '5px', marginLeft: '24px' }}>
               Ammo.jsを使わない軽量な物理演算。重力・慣性のみ対応。OOMエラーが発生しません。

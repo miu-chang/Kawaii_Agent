@@ -2,7 +2,7 @@ import { Hands } from '@mediapipe/hands';
 import { Camera } from '@mediapipe/camera_utils';
 
 /**
- * MediaPipe Hands統合サービス（実験機能）
+ * MediaPipe Hands統合サービス（拡張機能）
  * スマホカメラから手を検出してAR/MR空間にマッピング
  */
 class HandTrackingService {
