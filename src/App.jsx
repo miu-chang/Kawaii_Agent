@@ -474,6 +474,7 @@ function App() {
     pet: 'あなたとユーザーはとても親密な関係です。ユーザーがあなたを優しく撫でています。嬉しそうに反応してください。'
   });
   const [showTapPromptSettings, setShowTapPromptSettings] = useState(false);
+  const [showKeyBindings, setShowKeyBindings] = useState(false);
   const [showControlPanel, setShowControlPanel] = useState(false); // 左側コントロールパネルの表示状態
 
   // インタラクション履歴（最新5件程度を保持）
@@ -857,6 +858,75 @@ function App() {
       residentChatEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [chatHistory, showResidentChat]);
+
+  // キーボードショートカット設定
+  const [keyBindings, setKeyBindings] = useState(() => {
+    const saved = localStorage.getItem('keyBindings');
+    return saved ? JSON.parse(saved) : {
+      settings: '1',
+      controlPanel: '2',
+      residentMode: '3',
+      interaction: 'q',
+      cameraFollow: 'w'
+    };
+  });
+
+  // キーボードショートカット
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // 入力フィールドにフォーカスがある場合は無視
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      const key = e.key.toLowerCase();
+
+      if (key === keyBindings.settings) {
+        // 設定パネル切り替え（通常モードのみ）
+        if (!isResidentMode) {
+          setShowSettings(prev => !prev);
+          console.log('[Keyboard] Settings panel toggled');
+        }
+      } else if (key === keyBindings.controlPanel) {
+        // コントロールパネル切り替え（通常モードのみ）
+        if (!isResidentMode) {
+          setShowControlPanel(prev => !prev);
+          console.log('[Keyboard] Control panel toggled');
+        }
+      } else if (key === keyBindings.residentMode) {
+        // 常駐モード切り替え
+        setIsResidentMode(prev => !prev);
+        console.log('[Keyboard] Resident mode toggled');
+      } else if (key === keyBindings.interaction) {
+        // お触りモード切り替え
+        if (isResidentMode) {
+          // 常駐モード：isResidentTouchModeを切り替え
+          setIsResidentTouchMode(prev => {
+            const newValue = !prev;
+            console.log('[Keyboard] Resident touch mode toggled:', newValue);
+            return newValue;
+          });
+        } else {
+          // 通常モード：enableManualCameraを切り替え（OFFの時がお触りモードON）
+          setEnableManualCamera(prev => {
+            const newValue = !prev;
+            console.log('[Keyboard] Manual camera toggled (touch mode):', !newValue);
+            return newValue;
+          });
+        }
+      } else if (key === keyBindings.cameraFollow) {
+        // カメラ自動追従切り替え
+        setEnableCameraFollow(prev => {
+          const newValue = !prev;
+          console.log('[Keyboard] Camera follow toggled:', newValue);
+          return newValue;
+        });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isResidentMode, keyBindings]);
 
   const fallbackStateRef = useRef({ active: null, lastTriggered: 0, nextSwitchAt: 0, mode: 'primary' });
 
@@ -5358,6 +5428,107 @@ ${assistantMessage}`,
               何回モーション切り替え後にポーズを初期化するか（1〜10回、デフォルト3回）
             </p>
           </div>
+
+          <div style={{ marginBottom: '15px' }}>
+            <button
+              onClick={() => setShowKeyBindings(!showKeyBindings)}
+              style={{
+                padding: '10px 15px',
+                background: 'rgba(100,150,255,0.3)',
+                border: '1px solid rgba(255,255,255,0.3)',
+                borderRadius: '8px',
+                color: '#fff',
+                fontSize: '12px',
+                cursor: 'pointer',
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              <i className="fas fa-keyboard"></i>
+              キーボードショートカット設定
+            </button>
+          </div>
+
+          {showKeyBindings && (
+            <div style={{
+              marginBottom: '15px',
+              padding: '15px',
+              background: 'rgba(0,0,0,0.3)',
+              borderRadius: '8px',
+              border: '1px solid rgba(255,255,255,0.2)'
+            }}>
+              <h3 style={{ color: '#fff', fontSize: '13px', marginBottom: '10px' }}>キーバインディング設定</h3>
+              <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '10px', marginBottom: '15px' }}>
+                各機能に割り当てるキーを設定できます（左手で操作しやすいように1,2,3,Q,Wがデフォルト）
+              </p>
+
+              {[
+                { key: 'settings', label: '設定パネル', icon: 'fa-cog' },
+                { key: 'controlPanel', label: 'コントロールパネル', icon: 'fa-sliders-h' },
+                { key: 'residentMode', label: '常駐モード', icon: 'fa-thumbtack' },
+                { key: 'interaction', label: 'お触りモード', icon: 'fa-hand-pointer' },
+                { key: 'cameraFollow', label: 'カメラ自動追従', icon: 'fa-video' }
+              ].map(({ key, label, icon }) => (
+                <div key={key} style={{ marginBottom: '10px' }}>
+                  <label style={{ color: '#fff', fontSize: '11px', display: 'block', marginBottom: '5px' }}>
+                    <i className={`fas ${icon}`} style={{ marginRight: '5px', width: '12px' }}></i>
+                    {label}
+                  </label>
+                  <input
+                    type="text"
+                    value={keyBindings[key]}
+                    maxLength="1"
+                    onChange={(e) => {
+                      const newKey = e.target.value.toLowerCase();
+                      const newBindings = { ...keyBindings, [key]: newKey };
+                      setKeyBindings(newBindings);
+                      localStorage.setItem('keyBindings', JSON.stringify(newBindings));
+                    }}
+                    style={{
+                      width: '50px',
+                      padding: '5px 10px',
+                      borderRadius: '4px',
+                      border: '1px solid rgba(255,255,255,0.3)',
+                      background: 'rgba(255,255,255,0.1)',
+                      color: '#fff',
+                      fontSize: '12px',
+                      textAlign: 'center',
+                      fontFamily: 'monospace'
+                    }}
+                  />
+                </div>
+              ))}
+
+              <button
+                onClick={() => {
+                  const defaultBindings = {
+                    settings: '1',
+                    controlPanel: '2',
+                    residentMode: '3',
+                    interaction: 'q',
+                    cameraFollow: 'w'
+                  };
+                  setKeyBindings(defaultBindings);
+                  localStorage.setItem('keyBindings', JSON.stringify(defaultBindings));
+                }}
+                style={{
+                  marginTop: '10px',
+                  padding: '5px 10px',
+                  background: 'rgba(150,150,150,0.3)',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  borderRadius: '4px',
+                  color: '#fff',
+                  fontSize: '10px',
+                  cursor: 'pointer'
+                }}
+              >
+                デフォルトに戻す
+              </button>
+            </div>
+          )}
 
           <div style={{ marginBottom: '15px' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fff', fontSize: '12px', cursor: 'pointer' }}>
