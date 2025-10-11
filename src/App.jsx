@@ -16,6 +16,10 @@ import AboutModal from './components/AboutModal';
 import ConsentModal from './components/ConsentModal';
 import licenseApi from './services/licenseApi';
 import ttsModManager from './services/ttsModManager';
+import { MobileInteractions } from './utils/mobileInteractions';
+import { PhotoMode } from './components/PhotoMode';
+import { XRModeSelector } from './components/XRModeSelector';
+import ttsManager from './services/ttsManager';
 
 
 // 全ての待機モーション（ループ可能なもの）
@@ -169,12 +173,12 @@ const SHIFT_JIS_DECODER = (() => {
 const MMD_PRIMARY_KEYWORDS = ['ループ', 'ご機嫌', 'ぼんやり'];
 
 // ポーズファイル（静止ポーズ）を除外するキーワード
-// 注意：「モデルポージング」はアニメーションなので除外しない
-const MMD_POSE_KEYWORDS = ['pose', 'turn_pose', 'turn&pose'];
+// 注意：全てアニメーションとして使用するため、除外キーワードなし
+const MMD_POSE_KEYWORDS = [];
 
 // インタラクション用モーションキーワード
 const MMD_TAP_KEYWORDS = ['頭かく', 'dadakko', 'chikayori'];  // タップ時（照れる、甘える）
-const MMD_PET_KEYWORDS = ['ご機嫌', 'skip', 'cutely'];  // 撫でる時（嬉しい、スキップ）
+const MMD_PET_KEYWORDS = ['ご機嫌', 'skip'];  // 撫でる時（嬉しい、スキップ）
 
 const classifyMmdAnimations = (animations = []) => {
   if (!Array.isArray(animations) || animations.length === 0) {
@@ -519,10 +523,80 @@ function App() {
   const oomRetryCountRef = useRef(0);  // OOM再試行回数
   const [webglResetKey, setWebglResetKey] = useState(0);  // WebGLコンテキストリセット用
 
+  // ========================================
+  // モバイル機能関連State
+  // ========================================
+  const [showPhotoMode, setShowPhotoMode] = useState(false);
+  const [showVRMode, setShowVRMode] = useState(false);
+  const [showARMode, setShowARMode] = useState(false);
+  const mobileInteractions = useRef(null);
+  const threeRendererRef = useRef(null);
+  const threeSceneRef = useRef(null);
+  const threeCameraRef = useRef(null);
+  const [devModeTapCount, setDevModeTapCount] = useState(0);
+  const [enableHandTracking, setEnableHandTracking] = useState(() => {
+    const saved = localStorage.getItem('enableHandTracking');
+    return saved === 'true';
+  });
+
   // enablePhysicsの変更をRefに同期
   useEffect(() => {
     enablePhysicsRef.current = enablePhysics;
   }, [enablePhysics]);
+
+  // enableHandTrackingの変更をlocalStorageに保存
+  useEffect(() => {
+    localStorage.setItem('enableHandTracking', enableHandTracking);
+  }, [enableHandTracking]);
+
+  // ========================================
+  // MobileInteractions初期化
+  // ========================================
+  useEffect(() => {
+    // モバイルインタラクション初期化
+    mobileInteractions.current = new MobileInteractions();
+
+    // スワイプ → モーション切り替え
+    mobileInteractions.current.on('swipe', ({ direction }) => {
+      if (direction === 'left') {
+        // 次のモーション
+        playMmdFallbackMotion(false);
+      } else if (direction === 'right') {
+        // 前のモーション（ランダム）
+        playMmdFallbackMotion(true);
+      } else if (direction === 'up') {
+        // メニュー表示
+        setShowSettings(true);
+      } else if (direction === 'down') {
+        // メニュー非表示
+        setShowSettings(false);
+      }
+    });
+
+    // シェイク → ランダムモーション
+    mobileInteractions.current.on('shake', () => {
+      console.log('[Mobile] Shake detected - playing random motion');
+      playMmdFallbackMotion(true);
+    });
+
+    // ジャイロ → 視線追従（将来実装）
+    mobileInteractions.current.on('orientation', ({ beta, gamma }) => {
+      // TODO: VRM lookAt統合
+      // if (vrmModel && enableGyroTracking) {
+      //   const targetX = gamma / 90;
+      //   const targetY = beta / 180;
+      // }
+    });
+
+    // ダブルタップ → フォトモード
+    mobileInteractions.current.on('doubleTap', () => {
+      setShowPhotoMode(true);
+    });
+
+    return () => {
+      mobileInteractions.current?.destroy();
+    };
+  }, []);
 
   // ウェイクワード関連
   const [wakeWords, setWakeWords] = useState(() => {
@@ -2361,6 +2435,14 @@ function App() {
           default: 'あなたとユーザーはとても親密な関係です。ユーザーがあなたの身体を掴んで引っ張ってきました。自然に反応してください。'
         };
         basePrompt = grabPrompts[bodyPart] || grabPrompts.default;
+      } else if (type === 'wave') {
+        // 挨拶ジェスチャー時のプロンプト
+        basePrompt = 'ユーザーがあなたに手を振って挨拶してきました。明るく挨拶を返してください。1〜2文程度で、元気よく応答してください。';
+        interactionDetails = '\n（ユーザーが手を振って挨拶）';
+      } else if (type === 'hug') {
+        // 両手ジェスチャー（抱きしめ）時のプロンプト
+        basePrompt = 'ユーザーがあなたを両手で抱きしめようとしています。照れたり、喜んだり、驚いたり、自然に反応してください。1〜2文程度で応答してください。';
+        interactionDetails = '\n（ユーザーが両手で抱きしめようとしている）';
       }
     } else if (typeof interactionType === 'object' && interactionType.type === 'pet') {
       // 部位別インタラクション無効でも、撫でるは動作させる
@@ -2402,8 +2484,68 @@ ${basePrompt}${interactionDetails}
       }
     }
 
-    // VRMモデルの場合、インタラクション時に idle_sway_alt モーションに切り替え
-    if (modelType === 'vrm' && motionControls?.playMotion) {
+    // モーション切り替え（インタラクションタイプに応じて）
+    if (typeof interactionType === 'object' && interactionType.type === 'wave') {
+      // 挨拶ジェスチャー時のモーション
+      if (modelType === 'vrm' && motionControls?.playMotion) {
+        // VRM: wave系モーションをランダム選択
+        const waveMotions = ['wave', 'wave_02', 'standing_greeting'];
+        const selectedMotion = waveMotions[Math.floor(Math.random() * waveMotions.length)];
+        console.log('[Interaction] Wave gesture - switching to', selectedMotion, 'motion for VRM');
+        try {
+          await motionControls.playMotion(selectedMotion);
+        } catch (error) {
+          console.warn('[Interaction] Failed to play wave motion:', error);
+        }
+      } else if (modelType === 'mmd') {
+        // MMD: ChikayoriPoseまたはWalk+cutely+and+wave.zipをランダム選択（クローン再構築）
+        const waveMotionsMmd = ['モーション/ChikayoriPose.zip', 'モーション/Walk+cutely+and+wave.zip'];
+        const selectedMotionMmd = waveMotionsMmd[Math.floor(Math.random() * waveMotionsMmd.length)];
+        console.log('[Interaction] Wave gesture - applying', selectedMotionMmd, 'for MMD with clone reconstruction');
+        try {
+          // クローン再構築（定期リセットと同じ処理）
+          console.log('[Interaction] Resetting pose with clone reconstruction...');
+          if (vrmViewerRef.current?.resetBones) {
+            await vrmViewerRef.current.resetBones();
+            console.log('[Interaction] Pose reset complete');
+          }
+
+          // クローン再構築後、最小限の待機（メッシュ置き換え完了を待つ）
+          console.log('[Interaction] Waiting for mesh replacement to complete...');
+          await new Promise(resolve => setTimeout(resolve, 10));
+
+          // モーション適用（1回再生）
+          await applyMmdMotionUrl(selectedMotionMmd, null, 1);
+        } catch (error) {
+          console.warn('[Interaction] Failed to apply wave motion:', error);
+        }
+      }
+    } else if (typeof interactionType === 'object' && interactionType.type === 'hug') {
+      // 両手ジェスチャー（抱きしめ）時のモーション
+      if (modelType === 'mmd') {
+        // MMD: ChikayoriPose.zipを再生し、最後のフレームで固定
+        console.log('[Interaction] Hug gesture - applying ChikayoriPose motion for MMD (freeze at end)');
+        try {
+          // クローン再構築
+          console.log('[Interaction] Resetting pose with clone reconstruction...');
+          if (vrmViewerRef.current?.resetBones) {
+            await vrmViewerRef.current.resetBones();
+            console.log('[Interaction] Pose reset complete');
+          }
+
+          // クローン再構築後、最小限の待機
+          console.log('[Interaction] Waiting for mesh replacement to complete...');
+          await new Promise(resolve => setTimeout(resolve, 10));
+
+          // ChikayoriPoseを1回再生（最後のフレームで固定される）
+          await applyMmdMotionUrl('モーション/ChikayoriPose.zip', null, 1);
+        } catch (error) {
+          console.warn('[Interaction] Failed to apply hug motion:', error);
+        }
+      }
+      // VRMは特にモーション変更なし（通常のidle系を継続）
+    } else if (modelType === 'vrm' && motionControls?.playMotion) {
+      // 通常のインタラクション時はidle_sway_altに切り替え
       console.log('[Interaction] Switching to idle_sway_alt motion for VRM');
       try {
         await motionControls.playMotion('idle_sway_alt');
@@ -4684,7 +4826,26 @@ ${assistantMessage}`,
             </button>
           </div>
 
-          <h4 style={{ color: '#fff', marginBottom: '10px', fontSize: '14px' }}>キャラクター設定</h4>
+          <h4
+            style={{
+              color: '#fff',
+              marginBottom: '10px',
+              fontSize: '14px',
+              cursor: 'pointer',
+              userSelect: 'none'
+            }}
+            onClick={() => {
+              const newCount = devModeTapCount + 1;
+              setDevModeTapCount(newCount);
+              if (newCount >= 10) {
+                ttsManager.enableDevMode();
+                alert('🔓 開発者モードが有効になりました！\n隠しTTSエンジンが使用可能になりました。');
+                setDevModeTapCount(0);
+              }
+            }}
+          >
+            キャラクター設定{devModeTapCount > 0 ? ` (${devModeTapCount}/10)` : ''}
+          </h4>
           <div style={{ marginBottom: '10px', display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
             <button onClick={() => setSystemPrompt('あなたはずんだもん、東北ずん子の精霊です。\n一人称は「ボク」を使用してください。\nユーザーのことは「オマエ」と呼んでください。\n語尾に「〜のだ」「〜なのだ」をつけて話してください。\n明るく元気で、ちょっとおっちょこちょいな性格で振る舞ってください。\nずんだ餅が大好きなキャラクターとして、短めに返答してください。')}
               style={{ padding: '5px 10px', background: 'rgba(100,200,100,0.3)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', color: '#fff', fontSize: '11px', cursor: 'pointer' }}>
@@ -4729,6 +4890,24 @@ ${assistantMessage}`,
               resize: 'vertical'
             }}
           />
+
+          {/* 実験機能セクション */}
+          <h4 style={{ color: '#fff', marginBottom: '10px', fontSize: '14px', marginTop: '20px' }}>🧪 実験機能</h4>
+          <div style={{ marginBottom: '15px', background: 'rgba(255,165,0,0.1)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,165,0,0.3)' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fff', fontSize: '12px', cursor: 'pointer', marginBottom: '8px' }}>
+              <input
+                type="checkbox"
+                checked={enableHandTracking}
+                onChange={(e) => setEnableHandTracking(e.target.checked)}
+                style={{ cursor: 'pointer' }}
+              />
+              手検出インタラクション（AR/MRモード）
+            </label>
+            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '10px', margin: '0', marginLeft: '24px', lineHeight: '1.4' }}>
+              ⚠️ ベータ版機能です。AR/MRモードでカメラから手を検出し、ジェスチャーインタラクション（ピンチ・撫でる・グラブ・挨拶・抱きしめ）が可能になります。<br/>
+              カメラ使用によりバッテリー消費が増加します。推奨環境: iPhone 11以降、ハイエンドAndroid
+            </p>
+          </div>
 
           <h4 style={{ color: '#fff', marginBottom: '10px', fontSize: '14px' }}>TTSエンジン</h4>
           <select
@@ -6736,6 +6915,61 @@ ${assistantMessage}`,
         isOpen={showAboutModal}
         onClose={() => setShowAboutModal(false)}
       />
+
+      {/* フォトモード */}
+      <PhotoMode
+        threeRenderer={threeRendererRef.current}
+        scene={threeSceneRef.current}
+        camera={threeCameraRef.current}
+        onMotionChange={(motionName) => {
+          // モーション変更ロジック
+          if (motionControls && motionControls.playMotion) {
+            motionControls.playMotion(motionName);
+          }
+        }}
+        isVisible={showPhotoMode}
+        onClose={() => setShowPhotoMode(false)}
+      />
+
+      {/* 統合XRモードセレクター（VR/AR/MR全対応） */}
+      {!isMinimized && (
+        <XRModeSelector
+          threeRenderer={threeRendererRef.current}
+          scene={threeSceneRef.current}
+          camera={threeCameraRef.current}
+          mmdModel={null} // VRMViewerから取得する必要がある
+          vrmModel={null} // VRMViewerから取得する必要がある
+          onPlaceCharacter={(character, position) => {
+            console.log('[App] Character placed at:', position);
+          }}
+          onInteraction={handleInteraction}
+          enableHandTracking={enableHandTracking}
+        />
+      )}
+
+      {/* フォトモードボタン（別途） */}
+      {!isMinimized && (
+        <button
+          onClick={() => setShowPhotoMode(true)}
+          style={{
+            position: 'fixed',
+            bottom: '100px',
+            right: '20px',
+            width: '60px',
+            height: '60px',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+            border: 'none',
+            color: '#fff',
+            fontSize: '24px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            cursor: 'pointer',
+            zIndex: 9999
+          }}
+        >
+          📸
+        </button>
+      )}
       </div>
   );
 }

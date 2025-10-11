@@ -1,5 +1,4 @@
 import { MicVAD } from "@ricky0123/vad-web";
-import { createModel } from "vosk-browser";
 import voicePrintService from './voicePrintService';
 
 class VoiceRecorder {
@@ -11,8 +10,6 @@ class VoiceRecorder {
     this.onError = null;
     this.vad = null;
     this.vadAudioChunks = [];
-    this.voskModel = null;
-    this.voskRecognizer = null;
 
     // Whisperのハルシネーション（幻聴）対策用のブラックリスト
     this.hallucinationPhrases = [
@@ -325,10 +322,6 @@ class VoiceRecorder {
       this.vad.destroy();
       this.vad = null;
       this.isListening = false;
-    }
-    if (this.voskRecognizer) {
-      this.voskRecognizer.remove();
-      this.voskRecognizer = null;
     }
   }
 

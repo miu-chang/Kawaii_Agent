@@ -10,9 +10,18 @@
     "build:rvc": "cd rvc && ./build.sh",
     "build:all": "npm run build && npm run build:rvc",
     "electron": "electron .",
-    "dist": "npm run build:all && electron-builder"
+    "dist": "npm run build:all && electron-builder",
+    "cap:sync": "npm run build && npx cap sync",
+    "cap:ios": "npm run cap:sync && npx cap open ios",
+    "cap:android": "npm run cap:sync && npx cap open android"
   },
-  "keywords": ["ai", "desktop-companion", "vrm", "mmd", "voicevox"],
+  "keywords": [
+    "ai",
+    "desktop-companion",
+    "vrm",
+    "mmd",
+    "voicevox"
+  ],
   "author": "miu-chang (miu sekiguchi) <weiyu.illustration2002@gmail.com>",
   "license": "Proprietary",
   "type": "commonjs",
@@ -32,13 +41,25 @@
     "webpack-dev-server": "^5.2.2"
   },
   "dependencies": {
+    "@capacitor/camera": "^7.0.2",
+    "@capacitor/cli": "^7.4.3",
+    "@capacitor/core": "^7.4.3",
+    "@capacitor/device": "^7.0.2",
+    "@capacitor/filesystem": "^7.1.4",
+    "@capacitor/haptics": "^7.0.2",
+    "@capacitor/motion": "^7.0.1",
+    "@capacitor/share": "^7.0.2",
     "@gradio/client": "^1.19.1",
+    "@mediapipe/camera_utils": "^0.3.1675466862",
+    "@mediapipe/drawing_utils": "^0.3.1675466124",
+    "@mediapipe/hands": "^0.4.1675469240",
     "@mlc-ai/web-llm": "^0.2.79",
     "@pixiv/three-vrm": "^3.4.2",
     "@react-three/drei": "^10.7.6",
     "@react-three/fiber": "^9.3.0",
     "@ricky0123/vad-web": "^0.0.28",
     "ammojs-typed": "^1.0.6",
+    "ar.js": "^2.2.2",
     "dotenv": "^17.2.3",
     "fflate": "^0.8.2",
     "jszip": "^3.10.1",
@@ -49,8 +70,7 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "replicate": "^1.2.0",
-    "three": "0.170.0",
-    "vosk-browser": "^0.0.8"
+    "three": "^0.170.0"
   },
   "build": {
     "appId": "com.miuchang.kawaiiagent",
@@ -82,7 +102,9 @@
       "notarize": false
     },
     "win": {
-      "target": ["nsis"],
+      "target": [
+        "nsis"
+      ],
       "icon": "build/icon.ico"
     }
   }
