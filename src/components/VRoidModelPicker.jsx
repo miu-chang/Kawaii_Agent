@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import vroidHubService from '../services/vroidHubService';
+import vroidApiService from '../services/vroidApiService';
 
 /**
  * VRoid Hubからモデルを選択するコンポーネント
@@ -11,19 +11,9 @@ export default function VRoidModelPicker({ onSelect, onClose }) {
   const [error, setError] = useState(null);
   const [hasMore, setHasMore] = useState(true);
 
-  // 環境変数からClientIDとSecretを取得
+  // 初期化時に認証状態を確認
   useEffect(() => {
-    const clientId = process.env.VROID_HUB_CLIENT_ID;
-    const clientSecret = process.env.VROID_HUB_CLIENT_SECRET;
-
-    if (clientId && clientSecret) {
-      vroidHubService.setClientCredentials(clientId, clientSecret);
-    } else {
-      console.error('[VRoid Hub] Client credentials not found in environment variables');
-    }
-
-    // 既に認証済みかチェック
-    if (vroidHubService.isAuthenticated()) {
+    if (vroidApiService.isAuthenticated()) {
       setIsAuthenticated(true);
       loadCharacters();
     }
@@ -37,7 +27,7 @@ export default function VRoidModelPicker({ onSelect, onClose }) {
         try {
           setLoading(true);
           setError(null);
-          await vroidHubService.exchangeCodeForToken(code);
+          await vroidApiService.exchangeCodeForToken(code);
           setIsAuthenticated(true);
           await loadCharacters();
         } catch (err) {
@@ -63,10 +53,10 @@ export default function VRoidModelPicker({ onSelect, onClose }) {
 
       const options = { count: 100 };
       if (maxId) {
-        options.max_id = maxId;
+        options.maxId = maxId;
       }
 
-      const data = await vroidHubService.getCharacters(options);
+      const data = await vroidApiService.getCharacters(options);
 
       if (!maxId) {
         // 最初のロード
@@ -88,9 +78,9 @@ export default function VRoidModelPicker({ onSelect, onClose }) {
   };
 
   // VRoid Hub認証を開始
-  const handleLogin = () => {
+  const handleLogin = async () => {
     try {
-      vroidHubService.openAuthWindow();
+      await vroidApiService.openAuthWindow();
     } catch (err) {
       console.error('[VRoid Model Picker] Failed to open auth window:', err);
       setError('認証ウィンドウを開けませんでした: ' + err.message);
@@ -99,7 +89,7 @@ export default function VRoidModelPicker({ onSelect, onClose }) {
 
   // ログアウト
   const handleLogout = () => {
-    vroidHubService.logout();
+    vroidApiService.logout();
     setIsAuthenticated(false);
     setCharacters([]);
     setHasMore(true);
@@ -113,7 +103,7 @@ export default function VRoidModelPicker({ onSelect, onClose }) {
       console.log('[VRoid Model Picker] Loading character:', character.name, 'ID:', character.character_model_id);
 
       // VRMファイルのObject URLを取得
-      const vrmUrl = await vroidHubService.getVrmObjectUrl(character.character_model_id);
+      const vrmUrl = await vroidApiService.getVrmObjectUrl(character.character_model_id);
 
       if (onSelect) {
         onSelect({

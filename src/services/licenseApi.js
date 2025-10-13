@@ -2,7 +2,7 @@
  * バックエンドAPI連携サービス
  */
 
-const API_BASE_URL = process.env.BACKEND_API_URL || 'https://your-app.vercel.app';
+const API_BASE_URL = process.env.BACKEND_API_URL || 'https://kawaii-agent-backend.vercel.app';
 
 class LicenseAPI {
   constructor() {
@@ -80,6 +80,13 @@ class LicenseAPI {
       console.error('License verification error:', error);
       return { success: false, error: error.message };
     }
+  }
+
+  /**
+   * ライセンスキーを取得
+   */
+  getLicenseKey() {
+    return this.licenseKey;
   }
 
   /**

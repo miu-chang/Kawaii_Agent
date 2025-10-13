@@ -244,7 +244,13 @@ function CameraInteractionOverlay({ cameraConfig, onCameraChange }) {
     lastPosRef.current = { x: e.clientX, y: e.clientY };
 
     if (dragButtonRef.current === 0) {
-      // 左ドラッグ: パン移動（カメラの右方向・上方向に沿って平行移動）
+      // 左ドラッグ: 回転
+      const rotSpeed = 0.005;
+      yawRef.current -= dx * rotSpeed;
+      pitchRef.current -= dy * rotSpeed;
+      updateCameraFromRotation();
+    } else if (dragButtonRef.current === 2) {
+      // 右ドラッグ: パン移動（カメラの右方向・上方向に沿って平行移動）
       const panSpeed = 0.005;
 
       // カメラの向きベクトル
@@ -278,12 +284,6 @@ function CameraInteractionOverlay({ cameraConfig, onCameraChange }) {
       pitchRef.current = Math.atan2(y - ty, Math.sqrt((x - tx) * (x - tx) + (z - tz) * (z - tz)));
 
       updateCameraFromPosition();
-    } else if (dragButtonRef.current === 2) {
-      // 右ドラッグ: 回転
-      const rotSpeed = 0.005;
-      yawRef.current -= dx * rotSpeed;
-      pitchRef.current -= dy * rotSpeed;
-      updateCameraFromRotation();
     }
   };
 
@@ -692,7 +692,7 @@ function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = t
               vrmGrabStateRef.current.grabbedBoneOriginalRot = grabbedBoneOriginalRot;
 
               // カーソルをgrabbing（掴んでいる手）に変更
-              if (!enableManualCamera && gl.domElement) {
+              if (enableInteraction && gl.domElement) {
                 gl.domElement.style.cursor = 'grabbing';
               }
 
@@ -947,7 +947,7 @@ function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = t
         vrmGrabStateRef.current.grabbedBoneOriginalRot = null;
 
         // カーソルをgrab（開いた手）に戻す
-        if (!enableManualCamera && gl.domElement) {
+        if (enableInteraction && gl.domElement) {
           gl.domElement.style.cursor = 'grab';
         }
 
@@ -1869,6 +1869,7 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
   // GPT-5 nano表情制御用（MMD）
   const mmdGptExpressionParamsRef = useRef(null);
   const mmdLastSpeechTextRef = useRef('');
+  const mmdPrevIsSpeakingRef = useRef(false); // 前回のisSpeaking状態を保持
 
   // 簡易物理演算用（回転ベース）
   const simplePhysicsBonesRef = useRef([]);  // { bone, prevRotation, angularVelocity, parentPrevRotation, mass, stiffness, dampingRatio, restRotation, restLength }
@@ -3127,7 +3128,7 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
               mmdGrabStateRef.current.grabHitDistance = mmdGrabHitPoint.distanceTo(camera.position);
 
               // カーソルをgrabbing（掴んでいる手）に変更
-              if (!enableManualCamera && gl.domElement) {
+              if (enableInteraction && gl.domElement) {
                 gl.domElement.style.cursor = 'grabbing';
               }
 
@@ -3290,7 +3291,7 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
                 mmdGrabStateRef.current.grabHitDistance = mmdGrabHitPoint.distanceTo(camera.position);
 
                 // カーソルをgrabbing（掴んでいる手）に変更
-                if (!enableManualCamera && gl.domElement) {
+                if (enableInteraction && gl.domElement) {
                   gl.domElement.style.cursor = 'grabbing';
                 }
 
@@ -3380,7 +3381,7 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
         mmdGrabStateRef.current.grabHitDistance = null;
 
         // カーソルをgrab（開いた手）に戻す
-        if (!enableManualCamera && gl.domElement) {
+        if (enableInteraction && gl.domElement) {
           gl.domElement.style.cursor = 'grab';
         }
 
@@ -4593,10 +4594,14 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
     }
 
     // GPT-5 nano表情制御（MMD用・発話内容に基づく表情生成）
-    // ★コメントアウト：表情操作が不自然なため無効化
-    /*
-    if (isSpeaking && currentSpeechText && currentSpeechText !== mmdLastSpeechTextRef.current && mesh) {
-      mmdLastSpeechTextRef.current = currentSpeechText;
+    // テキストが変わった瞬間に1回だけ実行（絶対に1回のみ）
+    if (currentSpeechText &&
+        currentSpeechText !== mmdLastSpeechTextRef.current &&
+        mesh) {
+      const textToGenerate = currentSpeechText;
+      mmdLastSpeechTextRef.current = textToGenerate; // 即座に更新してループを防ぐ
+      mmdGptExpressionParamsRef.current = []; // 古い表情をクリア＋生成中フラグ（空配列）
+      console.log('[GPT-5 nano MMD] Triggering expression generation for:', textToGenerate);
 
       // 利用可能な表情モーフのリストを取得
       const availableExpressions = [];
@@ -4613,14 +4618,14 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
       if (availableExpressions.length > 0) {
         console.log('[GPT-5 nano MMD] Available expressions:', availableExpressions);
 
-        // GPT-5 nanoで表情パラメータを生成（非同期）
+        // GPT-5 nanoで表情モーフを選択（非同期）
         if (aiService.isReady) {
           (async () => {
             try {
-              const params = await aiService.generateExpressionParams(currentSpeechText, availableExpressions);
-              if (params) {
-                mmdGptExpressionParamsRef.current = params;
-                console.log('[GPT-5 nano MMD] Generated expression params:', params);
+              const selectedMorphs = await aiService.generateExpressionParams(textToGenerate, availableExpressions);
+              if (selectedMorphs && Array.isArray(selectedMorphs)) {
+                mmdGptExpressionParamsRef.current = selectedMorphs;
+                console.log('[GPT-5 nano MMD] Selected morphs:', selectedMorphs);
               }
             } catch (error) {
               console.error('[GPT-5 nano MMD] Failed to generate expression params:', error);
@@ -4628,16 +4633,39 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
           })();
         }
       }
-    } else if (!isSpeaking) {
-      // 発話終了時にクリア
+    }
+
+    // 発話終了時にクリア（isSpeakingがtrueからfalseに変わった瞬間のみ）
+    if (!isSpeaking && mmdPrevIsSpeakingRef.current) {
+      console.log('[GPT-5 nano MMD] Clearing expression state');
       mmdLastSpeechTextRef.current = '';
       mmdGptExpressionParamsRef.current = null;
     }
-    */
+
+    // isSpeaking状態を保存
+    mmdPrevIsSpeakingRef.current = isSpeaking;
 
     // helper.update()の直後に口パクを適用（VMDの表情を上書き）
     if (isSpeaking && mesh) {
       const lipSyncTargets = mmdLipSyncRef.current?.targets || [];
+
+      // まずVMDの表情モーフを全てリセット（GPTの表情を適用するため）
+      if (lipSyncTargets.length > 0) {
+        lipSyncTargets.forEach((target) => {
+          const { mesh, vowels } = target;
+          if (!mesh || !mesh.morphTargetDictionary || !mesh.morphTargetInfluences) return;
+
+          // 母音以外の表情モーフを全てリセット
+          Object.keys(mesh.morphTargetDictionary).forEach(morphName => {
+            const morphIndex = mesh.morphTargetDictionary[morphName];
+            // 母音モーフは口パクで使うのでリセットしない
+            const isVowel = ['あ', 'い', 'う', 'え', 'お', 'a', 'i', 'u', 'e', 'o', 'ワ', 'ω'].some(v => morphName === v);
+            if (!isVowel && typeof morphIndex === 'number') {
+              mesh.morphTargetInfluences[morphIndex] = 0;
+            }
+          });
+        });
+      }
 
       if (lipSyncTargets.length > 0) {
         // 初期化：現在の母音とサイクル情報を保持
@@ -4728,33 +4756,119 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
           }
         });
 
-        // GPT-5 nanoが生成した表情パラメータを適用（口パク母音以外）
-        // ★コメントアウト：表情操作が不自然なため無効化
-        /*
-        if (mmdGptExpressionParamsRef.current) {
-          const vowelMorphs = ['あ', 'い', 'う', 'え', 'お', 'a', 'i', 'u', 'e', 'o', 'ワ', 'ω'];
+        // GPT-5 nanoが選択した表情モーフを適用
+        if (mmdGptExpressionParamsRef.current &&
+            Array.isArray(mmdGptExpressionParamsRef.current) &&
+            mmdGptExpressionParamsRef.current.length > 0) { // 空配列（生成中）はスキップ
+          console.log('[MMD Expression] Attempting to apply morphs (raw):', mmdGptExpressionParamsRef.current);
 
-          lipSyncTargets.forEach((target) => {
+          const vowelMorphs = ['あ', 'い', 'う', 'え', 'お', 'a', 'i', 'u', 'e', 'o', 'ワ', 'ω'];
+          // 完全単独使用必須のモーフ
+          const soloMorphs = ['なごみ', 'はぅ', 'ハウ', 'ウィンク', 'ウインク', 'wink'];
+          // 目モーフ（笑いと組み合わせ不可）
+          const eyeMorphs = ['なごみ', 'はぅ', 'ハウ', 'ウィンク', 'ウインク', 'wink', 'じと', 'びっくり', 'キリッ'];
+          // 眉モーフ（笑いと組み合わせ可能）
+          const browMorphs = ['困る', '怒り', '真面目', '眉'];
+
+          // 単独使用必須のモーフが含まれている場合、それだけを残す（最初に見つかったもの優先）
+          let morphsToApply = [...mmdGptExpressionParamsRef.current];
+          const soloMorphFound = morphsToApply.find(m =>
+            soloMorphs.some(solo => m.includes(solo))
+          );
+
+          if (soloMorphFound) {
+            morphsToApply = [soloMorphFound];
+            console.log('[MMD Expression] Solo morph found, using only:', soloMorphFound);
+          } else {
+            // 「笑い」が含まれている場合、他の目モーフを除外（眉モーフは残す）
+            const hasWarai = morphsToApply.some(m => m.includes('笑い'));
+            if (hasWarai) {
+              morphsToApply = morphsToApply.filter(m => {
+                // 笑い自体は残す
+                if (m.includes('笑い')) return true;
+                // 眉モーフは残す
+                if (browMorphs.some(b => m.includes(b))) return true;
+                // 他の目モーフは除外
+                return !eyeMorphs.some(e => m.includes(e));
+              });
+              console.log('[MMD Expression] Filtered for 笑い compatibility:', morphsToApply);
+            }
+          }
+
+          console.log('[MMD Expression] Morphs to apply:', morphsToApply);
+          console.log('[MMD Expression] lipSyncTargets count:', lipSyncTargets.length);
+
+          const hasEyeClosedMorph = soloMorphFound !== undefined;
+
+          lipSyncTargets.forEach((target, targetIndex) => {
             const mesh = target.mesh;
+            console.log(`[MMD Expression] Target ${targetIndex}:`, {
+              hasMesh: !!mesh,
+              hasDictionary: !!mesh?.morphTargetDictionary,
+              hasInfluences: !!mesh?.morphTargetInfluences
+            });
+
             if (!mesh || !mesh.morphTargetDictionary || !mesh.morphTargetInfluences) return;
 
-            Object.entries(mmdGptExpressionParamsRef.current).forEach(([expName, value]) => {
+            // 選択されたモーフを適用
+            morphsToApply.forEach((selectedMorphName) => {
               // 母音モーフは口パクで制御しているので除外
-              if (vowelMorphs.some(v => expName.includes(v))) return;
+              if (vowelMorphs.some(v => selectedMorphName.includes(v))) {
+                console.log(`[MMD Expression] Skipped vowel morph: ${selectedMorphName}`);
+                return;
+              }
 
-              // モーフ名の完全一致または部分一致で適用
+              console.log(`[MMD Expression] Looking for morph: ${selectedMorphName}`);
+
+              // まず完全一致を探す
+              let foundMatch = false;
+              const exactMatch = Object.keys(mesh.morphTargetDictionary).find(
+                morphName => morphName === selectedMorphName
+              );
+
+              if (exactMatch) {
+                // 完全一致が見つかった場合、それだけを適用
+                const morphIndex = mesh.morphTargetDictionary[exactMatch];
+                if (typeof morphIndex === 'number') {
+                  mesh.morphTargetInfluences[morphIndex] = 1.0;
+                  console.log(`[MMD Expression] Applied (exact match) ${exactMatch} = 1.0 (index: ${morphIndex})`);
+                  foundMatch = true;
+                }
+              } else {
+                // 完全一致がない場合のみ部分一致を探す
+                Object.keys(mesh.morphTargetDictionary).forEach(morphName => {
+                  if (morphName.includes(selectedMorphName) ||
+                      selectedMorphName.includes(morphName)) {
+                    const morphIndex = mesh.morphTargetDictionary[morphName];
+                    if (typeof morphIndex === 'number') {
+                      mesh.morphTargetInfluences[morphIndex] = 1.0;
+                      console.log(`[MMD Expression] Applied (partial match) ${morphName} = 1.0 (index: ${morphIndex})`);
+                      foundMatch = true;
+                    }
+                  }
+                });
+              }
+
+              if (!foundMatch) {
+                console.warn(`[MMD Expression] No match found for: ${selectedMorphName}`);
+              }
+            });
+
+            // 目を閉じるモーフが選択されている場合、まばたきを無効化
+            if (hasEyeClosedMorph) {
               Object.keys(mesh.morphTargetDictionary).forEach(morphName => {
-                if (morphName === expName || morphName.includes(expName) || expName.includes(morphName)) {
+                if (morphName.includes('まばたき') || morphName.includes('blink') ||
+                    morphName.includes('瞬き') || morphName.toLowerCase().includes('blink')) {
                   const morphIndex = mesh.morphTargetDictionary[morphName];
-                  if (typeof morphIndex === 'number' && typeof value === 'number') {
-                    mesh.morphTargetInfluences[morphIndex] = value;
+                  if (typeof morphIndex === 'number') {
+                    mesh.morphTargetInfluences[morphIndex] = 0;
+                    console.log(`[MMD Expression] Disabled blink morph: ${morphName}`);
                   }
                 }
               });
-            });
+            }
           });
         }
-        */
       }
     } else if (!isSpeaking && mesh) {
       // isSpeaking=falseの時、口パクモーフをリセット

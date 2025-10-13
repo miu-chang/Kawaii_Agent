@@ -71,19 +71,39 @@ export default function ConsentModal({ isOpen, onAccept }) {
             <li><strong>システムプロンプト</strong>: キャラクター設定に使用されます</li>
             <li><strong>ユーザー設定</strong>: 音声、アニメーション、カメラ設定などが保存されます</li>
             <li><strong>ライセンスキー</strong>: BOOTH版のみ、認証に使用されます</li>
+            <li><strong>Google連携データ</strong>（任意・有効化時のみ）:
+              <ul>
+                <li>カレンダー予定の閲覧・作成・削除</li>
+                <li>Gmailメッセージの閲覧・送信</li>
+                <li>Google Driveファイルの閲覧・検索・共有</li>
+                <li>Google Tasksの閲覧・作成・管理</li>
+                <li>Google Contactsの閲覧</li>
+                <li>Google Meet会議リンクの作成</li>
+              </ul>
+            </li>
+            <li><strong>VRoid Hub連携データ</strong>（任意・有効化時のみ）: お気に入りモデルの閲覧とダウンロード</li>
           </ul>
 
           <h3 style={{ color: '#fff' }}>2. データの保存場所</h3>
           <ul>
             <li><strong>ローカル保存</strong>: 会話履歴、設定、インポートしたモデルはお使いのPC内（localStorage/IndexedDB）に保存されます</li>
             <li><strong>外部API</strong>: OpenAI APIは処理中の一時保存のみ（OpenAIのプライバシーポリシーに準拠）</li>
-            <li><strong>バックエンドサーバー</strong>: BOOTH版のみ、ライセンス認証情報（ハッシュ化されたキーのみ）が保存されます</li>
+            <li><strong>バックエンドサーバー</strong>:
+              <ul>
+                <li>BOOTH版: ライセンス認証情報（ハッシュ化されたキーのみ）</li>
+                <li>Google/VRoid Hub連携: OAuth認証トークン（暗号化保存、再認証で更新可能）</li>
+              </ul>
+            </li>
+            <li><strong>Googleサービス</strong>: 連携有効時、Googleアカウント内のデータに本アプリがアクセスします（Googleのプライバシーポリシーに準拠）</li>
           </ul>
 
           <h3 style={{ color: '#fff' }}>3. データの共有</h3>
           <ul>
             <li><strong>OpenAI</strong>: 会話内容と音声データはAI処理のため送信されます</li>
-            <li><strong>その他の第三者</strong>: データは共有されません</li>
+            <li><strong>Google</strong>: Google連携有効時、アカウントデータへのアクセスが発生します（ユーザーが明示的に許可した範囲のみ）</li>
+            <li><strong>VRoid Hub</strong>: VRoid Hub連携有効時、お気に入りモデルデータへのアクセスが発生します</li>
+            <li><strong>VOICEVOX</strong>: 音声合成のため、テキストデータが送信されます（音声合成使用時のみ）</li>
+            <li><strong>その他の第三者</strong>: 上記以外へのデータ共有はありません</li>
           </ul>
 
           <h3 style={{ color: '#fff' }}>4. 必要な許可</h3>
@@ -118,8 +138,10 @@ export default function ConsentModal({ isOpen, onAccept }) {
           <h3 style={{ color: '#fff' }}>8. 第三者サービスのプライバシーポリシー</h3>
           <p>本アプリケーションは以下の第三者サービスを使用します：</p>
           <ul>
-            <li><strong>OpenAI</strong>: <a href="https://openai.com/policies/privacy-policy" target="_blank" style={{ color: '#4a9eff' }}>プライバシーポリシー</a></li>
-            <li><strong>VOICEVOX</strong>: <a href="https://voicevox.hiroshiba.jp/" target="_blank" style={{ color: '#4a9eff' }}>公式サイト</a></li>
+            <li><strong>OpenAI</strong>: <a href="https://openai.com/policies/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color: '#4a9eff' }}>プライバシーポリシー</a></li>
+            <li><strong>Google</strong>: <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#4a9eff' }}>プライバシーポリシー</a></li>
+            <li><strong>VRoid Hub</strong>: <a href="https://hub.vroid.com/terms" target="_blank" rel="noopener noreferrer" style={{ color: '#4a9eff' }}>利用規約</a></li>
+            <li><strong>VOICEVOX</strong>: <a href="https://voicevox.hiroshiba.jp/" target="_blank" rel="noopener noreferrer" style={{ color: '#4a9eff' }}>公式サイト</a></li>
           </ul>
 
           <h3 style={{ color: '#fff' }}>9. お問い合わせ</h3>
@@ -132,7 +154,7 @@ export default function ConsentModal({ isOpen, onAccept }) {
           <hr style={{ border: 'none', borderTop: '1px solid #333', margin: '20px 0' }} />
 
           <p style={{ fontSize: '12px', color: '#888' }}>
-            最終更新: 2025年10月
+            最終更新: 2025年10月（Google連携機能追加）
           </p>
 
           {!hasReadAll && (

@@ -1129,25 +1129,65 @@ URL・ソース名は削除`;
     }
   }
 
-  // GPT-5 nanoで表情パラメータを生成（JSON形式）
+  // GPT-4.1-miniでMMD表情モーフを選択（配列形式）
+  // MMD用: 表情モーフを1〜3個選択
   async generateExpressionParams(context, availableExpressions) {
-    // 全モーフを送る
-    const morphList = availableExpressions.join(', ');
+    // 母音モーフのみを除外（口パク用）、それ以外は全て選択肢に
+    const expressionMorphs = availableExpressions.filter(morphName => {
+      const lower = morphName.toLowerCase();
 
-    const systemPrompt = `各モーフの値(0.0-1.0)を設定して表情を作成します。値が0のモーフは省略してください。JSON形式のみ返してください。`;
+      // 母音モーフは除外（口パクで使用）
+      if (morphName === 'あ' || morphName === 'い' || morphName === 'う' ||
+          morphName === 'え' || morphName === 'お' ||
+          morphName === 'ワ' || morphName === 'ω' ||
+          lower === 'a' || lower === 'i' || lower === 'u' ||
+          lower === 'e' || lower === 'o') {
+        return false;
+      }
+
+      // 瞳のサイズ変更モーフは除外
+      if (morphName.includes('瞳小') || morphName.includes('瞳大') ||
+          morphName.includes('瞳増大') || morphName.includes('瞳縦') ||
+          morphName.includes('瞳横') || morphName.includes('瞳潰')) {
+        return false;
+      }
+
+      return true;
+    });
+
+    if (expressionMorphs.length === 0) {
+      console.warn('[GPT-4.1-mini] No expression morphs available');
+      return null;
+    }
+
+    const morphList = expressionMorphs.join(', ');
+
+    const systemPrompt = `あなたは一流の表情クリエイターです。
+発話内容に合った表情モーフを1〜3個選択してください。
+創造性を発揮して、キャラクターの個性を引き出してください。
+
+【基本的な使い分け】
+- 嬉しい：笑い、にっこり等
+- 悲しい：はぅ、困る等
+- 怒り：じと目、怒り等の組み合わせ
+- 驚き：びっくり等
+
+【重要なルール】
+- 「はぅ」「なごみ」「ウィンク」は必ず単独使用（配列に1つだけ）
+- 目を大きく変える強いモーフ同士は組み合わせない
+- JSON配列形式のみ返す`;
 
     try {
       const result = await this.simpleQuery(
-        `発話: "${context}"
+        `発話内容: "${context}"
 
 利用可能なモーフ: ${morphList}
 
-発話の感情に合わせて、各モーフの値(0.0-1.0)を直接設定してJSON形式で返してください。
-値が0のモーフは省略してください。
+この発話に合った表情モーフを1〜3個選んでJSON配列で返してください。
 
 JSON:`,
         systemPrompt,
-        { model: 'gpt-5-nano', maxTokens: 2000 }
+        { model: 'gpt-4.1-mini', maxTokens: 500 }
       );
 
       console.log('[GPT-5 nano] Raw response:', result);
@@ -1159,17 +1199,22 @@ JSON:`,
 
       let jsonText = result.trim();
 
-      // Extract JSON（貪欲マッチで最後の}まで取得）
-      const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+      // Extract JSON配列（[...]）
+      const jsonMatch = jsonText.match(/\[[\s\S]*?\]/);
       if (jsonMatch) {
         jsonText = jsonMatch[0];
       } else {
-        console.warn('[GPT-5 nano] No JSON in response');
+        console.warn('[GPT-5 nano] No JSON array in response');
         return null;
       }
 
       const parsed = JSON.parse(jsonText);
-      console.log('[GPT-5 nano] Parsed morph params:', parsed);
+      if (!Array.isArray(parsed)) {
+        console.warn('[GPT-5 nano] Response is not an array');
+        return null;
+      }
+
+      console.log('[GPT-5 nano] Selected morphs:', parsed);
 
       return parsed;
 

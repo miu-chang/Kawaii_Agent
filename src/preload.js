@@ -45,5 +45,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onVRoidOAuthError: (callback) => {
     ipcRenderer.on('vroid-oauth-error', (event, error) => callback(error));
+  },
+
+  // Google OAuth
+  onGoogleOAuthCode: (callback) => {
+    ipcRenderer.on('google-oauth-code', (event, code) => callback(code));
+  },
+  onGoogleOAuthError: (callback) => {
+    ipcRenderer.on('google-oauth-error', (event, error) => callback(error));
   }
 });

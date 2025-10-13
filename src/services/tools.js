@@ -306,6 +306,290 @@ export const toolDefinitions = [
     }
   },
   {
+    type: 'function',
+    name: 'google_calendar_list',
+    description: 'Googleカレンダーの予定一覧を取得します。Google連携が必要です。',
+    parameters: {
+      type: 'object',
+      properties: {
+        days: {
+          type: 'number',
+          description: '取得する日数（今日から何日後まで）デフォルトは7日'
+        },
+        maxResults: {
+          type: 'number',
+          description: '最大取得件数。デフォルトは10'
+        }
+      },
+      additionalProperties: false
+    }
+  },
+  {
+    type: 'function',
+    name: 'google_calendar_create',
+    description: 'Googleカレンダーに予定を追加します。Google連携が必要です。',
+    parameters: {
+      type: 'object',
+      properties: {
+        summary: {
+          type: 'string',
+          description: '予定のタイトル'
+        },
+        start: {
+          type: 'string',
+          description: '開始日時（ISO 8601形式、例: 2025-01-15T14:00:00+09:00）'
+        },
+        end: {
+          type: 'string',
+          description: '終了日時（ISO 8601形式、例: 2025-01-15T15:00:00+09:00）'
+        },
+        description: {
+          type: 'string',
+          description: '予定の詳細（省略可能）'
+        },
+        location: {
+          type: 'string',
+          description: '場所（省略可能）'
+        }
+      },
+      required: ['summary', 'start', 'end'],
+      additionalProperties: false
+    }
+  },
+  {
+    type: 'function',
+    name: 'google_calendar_delete',
+    description: 'Googleカレンダーから予定を削除します。Google連携が必要です。',
+    parameters: {
+      type: 'object',
+      properties: {
+        eventId: {
+          type: 'string',
+          description: '削除する予定のID'
+        }
+      },
+      required: ['eventId'],
+      additionalProperties: false
+    }
+  },
+  {
+    type: 'function',
+    name: 'gmail_list',
+    description: 'Gmailの受信メール一覧を取得します。Google連携が必要です。',
+    parameters: {
+      type: 'object',
+      properties: {
+        maxResults: {
+          type: 'number',
+          description: '最大取得件数。デフォルトは10'
+        },
+        unreadOnly: {
+          type: 'boolean',
+          description: '未読のみ取得する場合はtrue。デフォルトはfalse'
+        }
+      },
+      additionalProperties: false
+    }
+  },
+  {
+    type: 'function',
+    name: 'gmail_send',
+    description: 'Gmailでメールを送信します。Google連携が必要です。',
+    parameters: {
+      type: 'object',
+      properties: {
+        to: {
+          type: 'string',
+          description: '送信先メールアドレス'
+        },
+        subject: {
+          type: 'string',
+          description: 'メールの件名'
+        },
+        body: {
+          type: 'string',
+          description: 'メール本文'
+        }
+      },
+      required: ['to', 'subject', 'body'],
+      additionalProperties: false
+    }
+  },
+  {
+    type: 'function',
+    name: 'google_drive_list',
+    description: 'Google Driveのファイル一覧を取得します。Google連携が必要です。',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'ファイル名で検索（省略可能）'
+        },
+        maxResults: {
+          type: 'number',
+          description: '最大取得件数。デフォルトは20'
+        }
+      },
+      additionalProperties: false
+    }
+  },
+  {
+    type: 'function',
+    name: 'google_drive_search',
+    description: 'Google Driveでファイルを検索します（ファイル名＋内容検索）。Google連携が必要です。',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: '検索クエリ'
+        },
+        maxResults: {
+          type: 'number',
+          description: '最大取得件数。デフォルトは20'
+        }
+      },
+      required: ['query'],
+      additionalProperties: false
+    }
+  },
+  {
+    type: 'function',
+    name: 'google_drive_share',
+    description: 'Google Driveのファイルを共有リンクにします。Google連携が必要です。',
+    parameters: {
+      type: 'object',
+      properties: {
+        fileId: {
+          type: 'string',
+          description: '共有するファイルのID'
+        }
+      },
+      required: ['fileId'],
+      additionalProperties: false
+    }
+  },
+  {
+    type: 'function',
+    name: 'google_tasks_list',
+    description: 'Google Tasksのタスク一覧を取得します。Google連携が必要です。',
+    parameters: {
+      type: 'object',
+      properties: {
+        maxResults: {
+          type: 'number',
+          description: '最大取得件数。デフォルトは20'
+        }
+      },
+      additionalProperties: false
+    }
+  },
+  {
+    type: 'function',
+    name: 'google_tasks_create',
+    description: 'Google Tasksにタスクを追加します。Google連携が必要です。',
+    parameters: {
+      type: 'object',
+      properties: {
+        title: {
+          type: 'string',
+          description: 'タスクのタイトル'
+        },
+        notes: {
+          type: 'string',
+          description: 'タスクの詳細（省略可能）'
+        },
+        due: {
+          type: 'string',
+          description: '期限（ISO 8601形式、例: 2025-01-15T00:00:00Z）（省略可能）'
+        }
+      },
+      required: ['title'],
+      additionalProperties: false
+    }
+  },
+  {
+    type: 'function',
+    name: 'google_tasks_complete',
+    description: 'Google Tasksのタスクを完了にします。Google連携が必要です。',
+    parameters: {
+      type: 'object',
+      properties: {
+        taskId: {
+          type: 'string',
+          description: '完了するタスクのID'
+        }
+      },
+      required: ['taskId'],
+      additionalProperties: false
+    }
+  },
+  {
+    type: 'function',
+    name: 'google_tasks_delete',
+    description: 'Google Tasksのタスクを削除します。Google連携が必要です。',
+    parameters: {
+      type: 'object',
+      properties: {
+        taskId: {
+          type: 'string',
+          description: '削除するタスクのID'
+        }
+      },
+      required: ['taskId'],
+      additionalProperties: false
+    }
+  },
+  {
+    type: 'function',
+    name: 'google_contacts_search',
+    description: 'Google Contactsで連絡先を検索します。Google連携が必要です。',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: '検索クエリ（名前やメールアドレス）'
+        },
+        maxResults: {
+          type: 'number',
+          description: '最大取得件数。デフォルトは20'
+        }
+      },
+      required: ['query'],
+      additionalProperties: false
+    }
+  },
+  {
+    type: 'function',
+    name: 'google_meet_create',
+    description: 'Google Meetの会議リンクを作成します（カレンダー予定として登録）。Google連携が必要です。',
+    parameters: {
+      type: 'object',
+      properties: {
+        summary: {
+          type: 'string',
+          description: '会議のタイトル'
+        },
+        start: {
+          type: 'string',
+          description: '開始日時（ISO 8601形式、例: 2025-01-15T14:00:00+09:00）'
+        },
+        end: {
+          type: 'string',
+          description: '終了日時（ISO 8601形式、例: 2025-01-15T15:00:00+09:00）'
+        },
+        description: {
+          type: 'string',
+          description: '会議の詳細（省略可能）'
+        }
+      },
+      required: ['summary', 'start', 'end'],
+      additionalProperties: false
+    }
+  },
+  {
     type: 'web_search'
   }
 ];
@@ -364,7 +648,7 @@ export class ToolExecutor {
       } else {
         // フォールバック: 通知のみ
         if (window.Notification && Notification.permission === 'granted') {
-          new Notification('⏰ タイマー終了', {
+          new Notification('[Timer] タイマー終了', {
             body: message
           });
         }
@@ -375,7 +659,7 @@ export class ToolExecutor {
 
     this.timers.set(timerId, timer);
 
-    return `⏰ ${parsedArgs.duration}分後にタイマーを設定しました！`;
+    return `[Timer] ${parsedArgs.duration}分後にタイマーを設定しました！`;
   }
 
   // メモ保存
@@ -498,10 +782,10 @@ export class ToolExecutor {
         return 'タスクが見つかりませんでした。';
       }
 
-      const priorityEmoji = { high: '🔴', medium: '🟡', low: '🟢' };
+      const priorityIcon = { high: '[!]', medium: '[~]', low: '[.]' };
       const todoList = filteredTodos.map(t => {
-        const status = t.completed ? '✅' : '⬜';
-        const priority = priorityEmoji[t.priority] || '⚪';
+        const status = t.completed ? '[x]' : '[ ]';
+        const priority = priorityIcon[t.priority] || '[-]';
         const createdDate = new Date(t.createdAt).toLocaleDateString('ja-JP');
         return `${status} ${priority} [ID:${t.id}] ${t.task}\n   作成日: ${createdDate}`;
       }).join('\n\n');
@@ -617,7 +901,7 @@ export class ToolExecutor {
       if (result.error) {
         return `エラー: ${result.error}`;
       }
-      const files = result.files.map(f => `${f.type === 'dir' ? '📁' : '📄'} ${f.name}`).join('\n');
+      const files = result.files.map(f => `${f.type === 'dir' ? '[DIR]' : '[FILE]'} ${f.name}`).join('\n');
       return `${result.path}\n\n${files}`;
     } catch (error) {
       console.error('List files error:', error);
@@ -658,16 +942,16 @@ export class ToolExecutor {
             'linux': 'Linux'
           }[sysRes.platform] || sysRes.platform;
 
-          result += `💻 プラットフォーム: ${platformName} (${sysRes.arch})\n\n`;
+          result += `[Platform] ${platformName} (${sysRes.arch})\n\n`;
 
           // CPU情報
-          result += `🖥️  CPU:\n`;
+          result += `[CPU]\n`;
           result += `  コア数: ${navigator.hardwareConcurrency || 'N/A'}個\n`;
           result += `  使用率: ${sysRes.cpuUsage}%\n\n`;
 
           // メモリ情報（システム全体）
           const usedMemory = (parseFloat(sysRes.totalMemory) - parseFloat(sysRes.freeMemory)).toFixed(2);
-          result += `💾 メモリ（システム全体）:\n`;
+          result += `[Memory - System]\n`;
           result += `  総容量: ${sysRes.totalMemory} GB\n`;
           result += `  使用中: ${usedMemory} GB (${sysRes.memoryUsage}%)\n`;
           result += `  空き: ${sysRes.freeMemory} GB\n\n`;
@@ -678,15 +962,15 @@ export class ToolExecutor {
             const appLimitMB = (performance.memory.jsHeapSizeLimit / 1048576).toFixed(2);
             const appUsagePercent = ((performance.memory.usedJSHeapSize / performance.memory.jsHeapSizeLimit) * 100).toFixed(1);
 
-            result += `📱 このアプリのメモリ:\n`;
+            result += `[Memory - App]\n`;
             result += `  使用中: ${appUsedMB} MB / ${appLimitMB} MB (${appUsagePercent}%)\n`;
           }
         } else {
           // Electronのシステム情報取得失敗時のフォールバック
-          result += `⚠️  詳細なシステム情報の取得に失敗しました。\n\n`;
+          result += `[!] 詳細なシステム情報の取得に失敗しました。\n\n`;
 
           if (navigator.hardwareConcurrency) {
-            result += `🖥️  CPUコア数: ${navigator.hardwareConcurrency}個\n\n`;
+            result += `[CPU] コア数: ${navigator.hardwareConcurrency}個\n\n`;
           }
 
           if (performance.memory) {
@@ -694,16 +978,16 @@ export class ToolExecutor {
             const limitMB = (performance.memory.jsHeapSizeLimit / 1048576).toFixed(2);
             const usagePercent = ((performance.memory.usedJSHeapSize / performance.memory.jsHeapSizeLimit) * 100).toFixed(1);
 
-            result += `💾 アプリのメモリ:\n`;
+            result += `[Memory - App]\n`;
             result += `  使用中: ${usedMB} MB / ${limitMB} MB (${usagePercent}%)\n`;
           }
         }
       } else {
         // Electron APIが利用できない場合
-        result += `⚠️  システム情報機能が利用できません。\n\n`;
+        result += `[!] システム情報機能が利用できません。\n\n`;
 
         if (navigator.hardwareConcurrency) {
-          result += `🖥️  CPUコア数: ${navigator.hardwareConcurrency}個\n\n`;
+          result += `[CPU] コア数: ${navigator.hardwareConcurrency}個\n\n`;
         }
 
         if (performance.memory) {
@@ -711,7 +995,7 @@ export class ToolExecutor {
           const limitMB = (performance.memory.jsHeapSizeLimit / 1048576).toFixed(2);
           const usagePercent = ((performance.memory.usedJSHeapSize / performance.memory.jsHeapSizeLimit) * 100).toFixed(1);
 
-          result += `💾 アプリのメモリ:\n`;
+          result += `[Memory - App]\n`;
           result += `  使用中: ${usedMB} MB / ${limitMB} MB (${usagePercent}%)\n`;
         }
       }
@@ -745,7 +1029,7 @@ export class ToolExecutor {
       localStorage.setItem('calendar_events', JSON.stringify(events));
 
       const timeStr = args.time ? ` ${args.time}` : '';
-      return `📅 イベントを追加しました:\n"${args.title}"\n日時: ${args.date}${timeStr}`;
+      return `[Calendar] イベントを追加しました:\n"${args.title}"\n日時: ${args.date}${timeStr}`;
 
     } catch (error) {
       console.error('Add calendar event error:', error);
@@ -785,7 +1069,7 @@ export class ToolExecutor {
       }
 
       const rangeText = { day: 'の予定', week: '（今週）', month: '（今月）' }[range] || '';
-      let result = `📅 カレンダー${rangeText}:\n\n`;
+      let result = `[Calendar]${rangeText}:\n\n`;
 
       filteredEvents.forEach(event => {
         const eventDate = new Date(event.date);
@@ -826,6 +1110,437 @@ export class ToolExecutor {
     } catch (error) {
       console.error('Delete calendar event error:', error);
       return 'イベントの削除に失敗しました。';
+    }
+  }
+
+  // Google Calendar: 予定一覧取得
+  async google_calendar_list(args) {
+    try {
+      const { default: googleApiService } = await import('./googleApiService.js');
+
+      if (!googleApiService.isAuthenticated()) {
+        return 'Google連携が必要です。設定からGoogleアカウントと連携してください。';
+      }
+
+      const days = args.days || 7;
+      const maxResults = args.maxResults || 10;
+
+      const timeMin = new Date().toISOString();
+      const timeMax = new Date();
+      timeMax.setDate(timeMax.getDate() + days);
+
+      const events = await googleApiService.getCalendarEvents({
+        timeMin,
+        timeMax: timeMax.toISOString(),
+        maxResults
+      });
+
+      if (events.length === 0) {
+        return `今後${days}日間の予定はありません。`;
+      }
+
+      let result = `[Google Calendar] 今後${days}日間の予定:\n\n`;
+      events.forEach(event => {
+        const start = event.start.dateTime || event.start.date;
+        const startDate = new Date(start);
+        const dateStr = startDate.toLocaleString('ja-JP', {
+          month: 'short',
+          day: 'numeric',
+          weekday: 'short',
+          hour: event.start.dateTime ? 'numeric' : undefined,
+          minute: event.start.dateTime ? '2-digit' : undefined
+        });
+
+        result += `[ID:${event.id.substring(0, 8)}...] ${dateStr}\n`;
+        result += `  ${event.summary}\n`;
+        if (event.location) {
+          result += `  [Location] ${event.location}\n`;
+        }
+        result += '\n';
+      });
+
+      return result.trim();
+
+    } catch (error) {
+      console.error('Google Calendar list error:', error);
+      return `Googleカレンダーの取得に失敗しました: ${error.message}`;
+    }
+  }
+
+  // Google Calendar: 予定追加
+  async google_calendar_create(args) {
+    try {
+      const { default: googleApiService } = await import('./googleApiService.js');
+
+      if (!googleApiService.isAuthenticated()) {
+        return 'Google連携が必要です。設定からGoogleアカウントと連携してください。';
+      }
+
+      const eventData = {
+        summary: args.summary,
+        description: args.description || '',
+        location: args.location || '',
+        start: {
+          dateTime: args.start,
+          timeZone: 'Asia/Tokyo'
+        },
+        end: {
+          dateTime: args.end,
+          timeZone: 'Asia/Tokyo'
+        }
+      };
+
+      const event = await googleApiService.createCalendarEvent(eventData);
+
+      const startDate = new Date(args.start);
+      const dateStr = startDate.toLocaleString('ja-JP', {
+        month: 'short',
+        day: 'numeric',
+        weekday: 'short',
+        hour: 'numeric',
+        minute: '2-digit'
+      });
+
+      return `[Google Calendar] 予定を追加しました:\n"${args.summary}"\n日時: ${dateStr}`;
+
+    } catch (error) {
+      console.error('Google Calendar create error:', error);
+      return `Googleカレンダーへの追加に失敗しました: ${error.message}`;
+    }
+  }
+
+  // Google Calendar: 予定削除
+  async google_calendar_delete(args) {
+    try {
+      const { default: googleApiService } = await import('./googleApiService.js');
+
+      if (!googleApiService.isAuthenticated()) {
+        return 'Google連携が必要です。設定からGoogleアカウントと連携してください。';
+      }
+
+      await googleApiService.deleteCalendarEvent(args.eventId);
+      return `Googleカレンダーから予定を削除しました。`;
+
+    } catch (error) {
+      console.error('Google Calendar delete error:', error);
+      return `Googleカレンダーからの削除に失敗しました: ${error.message}`;
+    }
+  }
+
+  // Gmail: メール一覧取得
+  async gmail_list(args) {
+    try {
+      const { default: googleApiService } = await import('./googleApiService.js');
+
+      if (!googleApiService.isAuthenticated()) {
+        return 'Google連携が必要です。設定からGoogleアカウントと連携してください。';
+      }
+
+      const maxResults = args.maxResults || 10;
+      const q = args.unreadOnly ? 'is:unread' : '';
+
+      const messages = await googleApiService.getGmailMessages({
+        maxResults,
+        q
+      });
+
+      if (messages.length === 0) {
+        return args.unreadOnly ? '未読メールはありません。' : 'メールがありません。';
+      }
+
+      let result = `[Gmail] ${args.unreadOnly ? '(未読のみ)' : ''}:\n\n`;
+      messages.forEach(msg => {
+        const date = new Date(msg.date);
+        const dateStr = date.toLocaleString('ja-JP', {
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit'
+        });
+
+        result += `[${dateStr}] ${msg.subject}\n`;
+        result += `  From: ${msg.from}\n`;
+        result += `  ${msg.snippet}\n\n`;
+      });
+
+      return result.trim();
+
+    } catch (error) {
+      console.error('Gmail list error:', error);
+      return `Gmailの取得に失敗しました: ${error.message}`;
+    }
+  }
+
+  // Gmail: メール送信
+  async gmail_send(args) {
+    try {
+      const { default: googleApiService } = await import('./googleApiService.js');
+
+      if (!googleApiService.isAuthenticated()) {
+        return 'Google連携が必要です。設定からGoogleアカウントと連携してください。';
+      }
+
+      const messageData = {
+        to: args.to,
+        subject: args.subject,
+        body: args.body
+      };
+
+      await googleApiService.sendGmailMessage(messageData);
+      return `[Gmail] メールを送信しました:\n宛先: ${args.to}\n件名: ${args.subject}`;
+
+    } catch (error) {
+      console.error('Gmail send error:', error);
+      return `メールの送信に失敗しました: ${error.message}`;
+    }
+  }
+
+  // Google Drive: ファイル一覧
+  async google_drive_list(args) {
+    try {
+      const { default: googleApiService } = await import('./googleApiService.js');
+
+      if (!googleApiService.isAuthenticated()) {
+        return 'Google連携が必要です。設定からGoogleアカウントと連携してください。';
+      }
+
+      const files = await googleApiService.getDriveFiles(args);
+
+      if (files.length === 0) {
+        return 'ファイルが見つかりませんでした。';
+      }
+
+      let result = `[Google Drive] ファイル一覧:\n\n`;
+      files.forEach(file => {
+        const sizeStr = file.size ? ` (${(file.size / 1024).toFixed(1)}KB)` : '';
+        result += `[File ID: ${file.id}]\n`;
+        result += `  ${file.name}${sizeStr}\n`;
+        result += `  ${file.webViewLink || ''}\n\n`;
+      });
+
+      return result.trim();
+
+    } catch (error) {
+      console.error('Google Drive list error:', error);
+      return `Google Driveのファイル取得に失敗しました: ${error.message}`;
+    }
+  }
+
+  // Google Drive: ファイル検索
+  async google_drive_search(args) {
+    try {
+      const { default: googleApiService } = await import('./googleApiService.js');
+
+      if (!googleApiService.isAuthenticated()) {
+        return 'Google連携が必要です。設定からGoogleアカウントと連携してください。';
+      }
+
+      const files = await googleApiService.searchDriveFiles(args.query, { maxResults: args.maxResults });
+
+      if (files.length === 0) {
+        return `「${args.query}」に一致するファイルが見つかりませんでした。`;
+      }
+
+      let result = `[Google Drive] 検索結果: 「${args.query}」\n\n`;
+      files.forEach(file => {
+        const sizeStr = file.size ? ` (${(file.size / 1024).toFixed(1)}KB)` : '';
+        result += `[File ID: ${file.id}]\n`;
+        result += `  ${file.name}${sizeStr}\n`;
+        result += `  ${file.webViewLink || ''}\n\n`;
+      });
+
+      return result.trim();
+
+    } catch (error) {
+      console.error('Google Drive search error:', error);
+      return `Google Driveの検索に失敗しました: ${error.message}`;
+    }
+  }
+
+  // Google Drive: ファイル共有
+  async google_drive_share(args) {
+    try {
+      const { default: googleApiService } = await import('./googleApiService.js');
+
+      if (!googleApiService.isAuthenticated()) {
+        return 'Google連携が必要です。設定からGoogleアカウントと連携してください。';
+      }
+
+      const result = await googleApiService.shareDriveFile(args.fileId);
+      return `[Google Drive] ファイルを共有しました:\n${result.webViewLink}`;
+
+    } catch (error) {
+      console.error('Google Drive share error:', error);
+      return `Google Driveの共有に失敗しました: ${error.message}`;
+    }
+  }
+
+  // Google Tasks: タスク一覧
+  async google_tasks_list(args) {
+    try {
+      const { default: googleApiService } = await import('./googleApiService.js');
+
+      if (!googleApiService.isAuthenticated()) {
+        return 'Google連携が必要です。設定からGoogleアカウントと連携してください。';
+      }
+
+      const tasks = await googleApiService.getTasks(args);
+
+      if (tasks.length === 0) {
+        return 'タスクはありません。';
+      }
+
+      let result = `[Google Tasks] タスク一覧:\n\n`;
+      tasks.forEach(task => {
+        const status = task.status === 'completed' ? '[完了]' : '[ ]';
+        result += `${status} ${task.title}\n`;
+        result += `  Task ID: ${task.id}\n`;
+        if (task.notes) {
+          result += `  ${task.notes}\n`;
+        }
+        if (task.due) {
+          const due = new Date(task.due);
+          result += `  期限: ${due.toLocaleDateString('ja-JP')}\n`;
+        }
+        result += '\n';
+      });
+
+      return result.trim();
+
+    } catch (error) {
+      console.error('Google Tasks list error:', error);
+      return `Google Tasksの取得に失敗しました: ${error.message}`;
+    }
+  }
+
+  // Google Tasks: タスク作成
+  async google_tasks_create(args) {
+    try {
+      const { default: googleApiService } = await import('./googleApiService.js');
+
+      if (!googleApiService.isAuthenticated()) {
+        return 'Google連携が必要です。設定からGoogleアカウントと連携してください。';
+      }
+
+      const task = await googleApiService.createTask(args);
+      return `[Google Tasks] タスクを追加しました:\n${task.title}`;
+
+    } catch (error) {
+      console.error('Google Tasks create error:', error);
+      return `タスクの追加に失敗しました: ${error.message}`;
+    }
+  }
+
+  // Google Tasks: タスク完了
+  async google_tasks_complete(args) {
+    try {
+      const { default: googleApiService } = await import('./googleApiService.js');
+
+      if (!googleApiService.isAuthenticated()) {
+        return 'Google連携が必要です。設定からGoogleアカウントと連携してください。';
+      }
+
+      const task = await googleApiService.completeTask(args.taskId);
+      return `[Google Tasks] タスクを完了にしました:\n${task.title}`;
+
+    } catch (error) {
+      console.error('Google Tasks complete error:', error);
+      return `タスクの完了に失敗しました: ${error.message}`;
+    }
+  }
+
+  // Google Tasks: タスク削除
+  async google_tasks_delete(args) {
+    try {
+      const { default: googleApiService } = await import('./googleApiService.js');
+
+      if (!googleApiService.isAuthenticated()) {
+        return 'Google連携が必要です。設定からGoogleアカウントと連携してください。';
+      }
+
+      await googleApiService.deleteTask(args.taskId);
+      return `[Google Tasks] タスクを削除しました。`;
+
+    } catch (error) {
+      console.error('Google Tasks delete error:', error);
+      return `タスクの削除に失敗しました: ${error.message}`;
+    }
+  }
+
+  // Google Contacts: 連絡先検索
+  async google_contacts_search(args) {
+    try {
+      const { default: googleApiService } = await import('./googleApiService.js');
+
+      if (!googleApiService.isAuthenticated()) {
+        return 'Google連携が必要です。設定からGoogleアカウントと連携してください。';
+      }
+
+      const contacts = await googleApiService.searchContacts(args.query, { maxResults: args.maxResults });
+
+      if (contacts.length === 0) {
+        return `「${args.query}」に一致する連絡先が見つかりませんでした。`;
+      }
+
+      let result = `[Google Contacts] 検索結果: 「${args.query}」\n\n`;
+      contacts.forEach(contact => {
+        const person = contact.person;
+        const name = person.names?.[0]?.displayName || '(名前なし)';
+        const email = person.emailAddresses?.[0]?.value || '';
+        const phone = person.phoneNumbers?.[0]?.value || '';
+
+        result += `${name}\n`;
+        if (email) result += `  Email: ${email}\n`;
+        if (phone) result += `  Phone: ${phone}\n`;
+        result += '\n';
+      });
+
+      return result.trim();
+
+    } catch (error) {
+      console.error('Google Contacts search error:', error);
+      return `連絡先の検索に失敗しました: ${error.message}`;
+    }
+  }
+
+  // Google Meet: 会議リンク作成
+  async google_meet_create(args) {
+    try {
+      const { default: googleApiService } = await import('./googleApiService.js');
+
+      if (!googleApiService.isAuthenticated()) {
+        return 'Google連携が必要です。設定からGoogleアカウントと連携してください。';
+      }
+
+      const meetingData = {
+        summary: args.summary,
+        start: {
+          dateTime: args.start,
+          timeZone: 'Asia/Tokyo'
+        },
+        end: {
+          dateTime: args.end,
+          timeZone: 'Asia/Tokyo'
+        },
+        description: args.description || ''
+      };
+
+      const result = await googleApiService.createMeetingLink(meetingData);
+
+      const startDate = new Date(args.start);
+      const dateStr = startDate.toLocaleString('ja-JP', {
+        month: 'short',
+        day: 'numeric',
+        weekday: 'short',
+        hour: 'numeric',
+        minute: '2-digit'
+      });
+
+      return `[Google Meet] 会議リンクを作成しました:\n${args.summary}\n日時: ${dateStr}\nリンク: ${result.meetLink}`;
+
+    } catch (error) {
+      console.error('Google Meet create error:', error);
+      return `会議リンクの作成に失敗しました: ${error.message}`;
     }
   }
 

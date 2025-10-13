@@ -168,12 +168,14 @@ if (process.defaultApp) {
 
 // VRoid Hub OAuth コールバック処理用の変数
 let vroidOAuthCallback = null;
+let googleOAuthCallback = null;
 
 // プロトコルURLを受け取る（macOS）
 app.on('open-url', (event, url) => {
   event.preventDefault();
-  console.log('[VRoid Hub] Received protocol URL:', url);
+  console.log('[OAuth] Received protocol URL:', url);
   handleVRoidOAuthCallback(url);
+  handleGoogleOAuthCallback(url);
 });
 
 // シングルインスタンスロック（Windows/Linux用）
@@ -185,8 +187,9 @@ if (!gotTheLock) {
     // kawaii-agent:// で起動された場合
     const url = commandLine.find(arg => arg.startsWith('kawaii-agent://'));
     if (url) {
-      console.log('[VRoid Hub] Received protocol URL (second-instance):', url);
+      console.log('[OAuth] Received protocol URL (second-instance):', url);
       handleVRoidOAuthCallback(url);
+      handleGoogleOAuthCallback(url);
     }
 
     // ウィンドウにフォーカス
@@ -230,6 +233,38 @@ function handleVRoidOAuthCallback(url) {
   }
 }
 
+// Google OAuth コールバック処理
+function handleGoogleOAuthCallback(url) {
+  try {
+    const urlObj = new URL(url);
+
+    // kawaii-agent://google-callback?code=xxx の形式
+    if (urlObj.protocol === 'kawaii-agent:' && urlObj.hostname === 'google-callback') {
+      const code = urlObj.searchParams.get('code');
+      const error = urlObj.searchParams.get('error');
+
+      if (error) {
+        console.error('[Google Auth] OAuth error:', error);
+        // レンダラープロセスにエラーを通知
+        if (windows.length > 0) {
+          windows[0].window.webContents.send('google-oauth-error', error);
+        }
+        return;
+      }
+
+      if (code) {
+        console.log('[Google Auth] OAuth code received:', code.substring(0, 10) + '...');
+        // レンダラープロセスにコードを送信
+        if (windows.length > 0) {
+          windows[0].window.webContents.send('google-oauth-code', code);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('[Google Auth] Failed to parse OAuth callback URL:', error);
+  }
+}
+
 // VRoid Hub OAuth用ローカルサーバー（開発中のみ）
 let oauthServer = null;
 // 常にローカルサーバーを起動（パッケージ化されたアプリではカスタムプロトコルを使用）
@@ -266,6 +301,35 @@ if (true) {
           windows[0].window.webContents.send('vroid-oauth-code', code);
         }
       }
+    } else if (url.pathname === '/google-callback') {
+      const code = url.searchParams.get('code');
+      const error = url.searchParams.get('error');
+
+      // HTMLレスポンスを返す
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(`
+        <html>
+          <head><title>Google 認証</title></head>
+          <body>
+            <h2>認証完了</h2>
+            <p>このウィンドウを閉じて、アプリに戻ってください。</p>
+            <script>window.close();</script>
+          </body>
+        </html>
+      `);
+
+      // Electronアプリにコードを送信
+      if (error) {
+        console.error('[Google Auth] OAuth error:', error);
+        if (windows.length > 0) {
+          windows[0].window.webContents.send('google-oauth-error', error);
+        }
+      } else if (code) {
+        console.log('[Google Auth] OAuth code received:', code.substring(0, 10) + '...');
+        if (windows.length > 0) {
+          windows[0].window.webContents.send('google-oauth-code', code);
+        }
+      }
     } else {
       res.writeHead(404);
       res.end('Not Found');
@@ -273,7 +337,9 @@ if (true) {
   });
 
   oauthServer.listen(3456, () => {
-    console.log('[VRoid Hub] OAuth callback server listening on http://localhost:3456');
+    console.log('[OAuth] Callback server listening on http://localhost:3456');
+    console.log('[OAuth] VRoid Hub: http://localhost:3456/callback');
+    console.log('[OAuth] Google: http://localhost:3456/google-callback');
   });
 }
 

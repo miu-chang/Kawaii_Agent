@@ -17,6 +17,7 @@ import ConsentModal from './components/ConsentModal';
 import VRoidModelPicker from './components/VRoidModelPicker';
 import licenseApi from './services/licenseApi';
 import ttsModManager from './services/ttsModManager';
+import googleApiService from './services/googleApiService';
 
 
 // 全ての待機モーション（ループ可能なもの）
@@ -498,6 +499,7 @@ function App() {
   const [showAboutModal, setShowAboutModal] = useState(false); // Aboutモーダル
   const [showModelSourceModal, setShowModelSourceModal] = useState(false); // モデル読み込み元選択モーダル
   const [showVRoidPicker, setShowVRoidPicker] = useState(false); // VRoid Hubモデル選択
+  const [googleAuthStatus, setGoogleAuthStatus] = useState('disconnected'); // Google連携状態
   const [installedMods, setInstalledMods] = useState([]); // インストール済みMod一覧
   const [showModManagement, setShowModManagement] = useState(false); // Mod管理セクション開閉
   const [hideVoicevoxNotice, setHideVoicevoxNotice] = useState(() => {
@@ -855,6 +857,35 @@ function App() {
 
     console.log('[App] Resident mode:', isResidentMode, 'Touch mode:', isResidentTouchMode);
   }, [isResidentMode, isResidentTouchMode, showAboveFullscreen]);
+
+  // Google OAuth コールバック処理
+  useEffect(() => {
+    if (window.electronAPI?.onGoogleOAuthCode) {
+      window.electronAPI.onGoogleOAuthCode(async (code) => {
+        console.log('[Google Auth] OAuth code received');
+        try {
+          await googleApiService.exchangeCodeForToken(code);
+          setGoogleAuthStatus('connected');
+          console.log('[Google Auth] Successfully authenticated');
+        } catch (err) {
+          console.error('[Google Auth] Token exchange failed:', err);
+          setGoogleAuthStatus('error');
+          alert('Google認証に失敗しました: ' + err.message);
+        }
+      });
+
+      window.electronAPI.onGoogleOAuthError((error) => {
+        console.error('[Google Auth] OAuth error:', error);
+        setGoogleAuthStatus('error');
+        alert('Google認証エラー: ' + error);
+      });
+    }
+
+    // 初期化時に認証状態を確認
+    if (googleApiService.isAuthenticated()) {
+      setGoogleAuthStatus('connected');
+    }
+  }, []);
 
   // 常駐モードチャットの自動スクロール
   useEffect(() => {
@@ -2542,6 +2573,9 @@ ${basePrompt}${interactionDetails}
 
       console.log('[Interaction] AI response:', assistantMessage);
 
+      // GPT-5 nano表情生成を先に開始（TTS合成前）
+      setCurrentSpeechText(assistantMessage);
+
       // 履歴に追加（最大3往復まで保持）
       setInteractionHistory(prev => {
         const newHistory = [
@@ -2622,6 +2656,9 @@ ${basePrompt}${interactionDetails}
           setCurrentSpeechText('');
           setCurrentGesture(null);
         } else if (ttsEngine.startsWith('moe-model')) {
+          // GPT-5 nano表情生成を先に開始（TTS合成前）
+          setCurrentSpeechText(assistantMessage);
+
           const modelId = ttsEngine === 'moe-model12' ? 12 : 15;
           await moeTTSService.speak(assistantMessage, {
             modelId: modelId,
@@ -2634,16 +2671,15 @@ ${basePrompt}${interactionDetails}
               setCurrentGesture('thinking');
             },
             onPlaybackStart: () => {
-              console.log('[Interaction] onPlaybackStart - setting isSpeaking=true');
+              console.log('[Conversation] onPlaybackStart - setting isSpeaking=true');
               setIsPreparingVoice(false);
               setIsSpeaking(true);
               setIsTTSSpeaking(true);
-              setCurrentSpeechText(assistantMessage); // GPT-5 nano表情制御用
               setCurrentEmotion(finalEmotion);
               setCurrentGesture('speaking');
             },
             onPlaybackEnd: () => {
-              console.log('[Interaction] onPlaybackEnd - setting isSpeaking=false');
+              console.log('[Conversation] onPlaybackEnd - setting isSpeaking=false');
               setIsSpeaking(false);
               setIsTTSSpeaking(false);
               setCurrentSpeechText(''); // 発話テキストをクリア
@@ -4788,18 +4824,63 @@ ${assistantMessage}`,
           <h4 style={{ color: '#fff', marginBottom: '10px', fontSize: '14px' }}>ライセンス管理</h4>
           <div style={{ marginBottom: '20px' }}>
             <button onClick={() => setIsLicenseModalOpen(true)}
-              style={{ 
-                padding: '8px 16px', 
-                background: licenseApi.hasValidLicense() ? 'rgba(78,204,163,0.3)' : 'rgba(233,69,96,0.3)', 
-                border: '1px solid rgba(255,255,255,0.2)', 
-                borderRadius: '12px', 
-                color: '#fff', 
-                fontSize: '12px', 
+              style={{
+                padding: '8px 16px',
+                background: licenseApi.hasValidLicense() ? 'rgba(78,204,163,0.3)' : 'rgba(233,69,96,0.3)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: '12px',
+                color: '#fff',
+                fontSize: '12px',
                 cursor: 'pointer',
                 width: '100%'
               }}>
               {licenseApi.hasValidLicense() ? 'ライセンス管理 ✓' : 'ライセンスを追加'}
             </button>
+          </div>
+
+          <h4 style={{ color: '#fff', marginBottom: '10px', fontSize: '14px' }}>Google連携</h4>
+          <div style={{ marginBottom: '20px' }}>
+            <button onClick={async () => {
+              if (googleApiService.isAuthenticated()) {
+                if (window.confirm('Google連携を解除しますか？')) {
+                  googleApiService.logout();
+                  setGoogleAuthStatus('disconnected');
+                }
+              } else {
+                try {
+                  await googleApiService.openAuthWindow();
+                  setGoogleAuthStatus('connecting');
+                } catch (error) {
+                  alert('Google認証を開始できませんでした: ' + error.message);
+                }
+              }
+            }}
+              style={{
+                padding: '8px 16px',
+                background: googleApiService.isAuthenticated() ? 'rgba(78,204,163,0.3)' : 'rgba(66,133,244,0.3)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: '12px',
+                color: '#fff',
+                fontSize: '12px',
+                cursor: 'pointer',
+                width: '100%'
+              }}>
+              <i className="fab fa-google" style={{ marginRight: '8px' }}></i>
+              {googleApiService.isAuthenticated() ? 'Google連携済み ✓' : 'Googleと連携'}
+            </button>
+            {googleApiService.isAuthenticated() && (
+              <div style={{
+                marginTop: '8px',
+                fontSize: '11px',
+                color: 'rgba(255,255,255,0.6)',
+                padding: '6px 8px',
+                background: 'rgba(0,0,0,0.2)',
+                borderRadius: '8px'
+              }}>
+                <i className="fas fa-check-circle" style={{ marginRight: '6px', color: '#4ECCA3' }}></i>
+                Calendar・Gmail連携中
+              </div>
+            )}
           </div>
 
           <h4 style={{ color: '#fff', marginBottom: '10px', fontSize: '14px' }}>キャラクター設定</h4>
