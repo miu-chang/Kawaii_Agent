@@ -128,14 +128,25 @@ export class VRMAAnimationManager {
     }
 
     action.setLoop(loopMode, options.loopCount ?? Infinity);
-    action.clampWhenFinished = options.clampWhenFinished || false;
+    action.clampWhenFinished = options.clampWhenFinished !== undefined ? options.clampWhenFinished : true;
     action.fadeIn(options.fadeInDuration || 0.3);
     action.play();
+
+    // モーション完了時のコールバック設定
+    if (options.onFinished && loopMode === THREE.LoopOnce) {
+      const onFinished = (event) => {
+        if (event.action === action) {
+          options.onFinished();
+          this.mixer.removeEventListener('finished', onFinished);
+        }
+      };
+      this.mixer.addEventListener('finished', onFinished);
+    }
 
     this.currentAction = action;
     this.currentAnimationName = name;
 
-    console.log(`Playing animation "${name}"`);
+    console.log(`Playing animation "${name}" (loop: ${loopMode === THREE.LoopOnce ? 'once' : 'repeat'})`);
     return action;
   }
 

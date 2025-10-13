@@ -10,6 +10,8 @@ class AIService {
     this.systemPrompt = ''; // 初期化時に設定
     this.model = 'gpt-4.1-mini';
     this.isLicenseMode = false; // ライセンスモードかどうか
+    this.expressionHistory = []; // 表情選択履歴（直近5回分）
+    this.maxExpressionHistory = 5;
   }
 
   async initialize(apiKey, systemPrompt, onProgress) {
@@ -1171,17 +1173,26 @@ URL・ソース名は削除`;
 - 悲しい：はぅ、困る等
 - 怒り：じと目、怒り等の組み合わせ
 - 驚き：びっくり等
+- しいたけ：目の中に十字のハイライトが入る可愛い表情、キラキラとした目のこと
 
 【重要なルール】
 - 「はぅ」「なごみ」「ウィンク」は必ず単独使用（配列に1つだけ）
+- 「はぅ（＞＜）」「なごみ（＝w＝）」は単独使用だが、とても可愛らしい表情なので文脈に合えばよく使ってください
 - 目を大きく変える強いモーフ同士は組み合わせない
 - JSON配列形式のみ返す`;
+
+    // 表情履歴をプロンプトに含める
+    let historyText = '';
+    if (this.expressionHistory.length > 0) {
+      const recentHistory = this.expressionHistory.slice(-3).map(h => h.join(', ')).join(' → ');
+      historyText = `\n\n前回までの表情: ${recentHistory}\n同じ表情ばかり使わず、バリエーションを持たせてください。`;
+    }
 
     try {
       const result = await this.simpleQuery(
         `発話内容: "${context}"
 
-利用可能なモーフ: ${morphList}
+利用可能なモーフ: ${morphList}${historyText}
 
 この発話に合った表情モーフを1〜3個選んでJSON配列で返してください。
 
@@ -1215,6 +1226,12 @@ JSON:`,
       }
 
       console.log('[GPT-5 nano] Selected morphs:', parsed);
+
+      // 表情履歴に追加
+      this.expressionHistory.push(parsed);
+      if (this.expressionHistory.length > this.maxExpressionHistory) {
+        this.expressionHistory.shift(); // 古いものを削除
+      }
 
       return parsed;
 

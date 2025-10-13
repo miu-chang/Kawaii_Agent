@@ -175,8 +175,36 @@ const MMD_PRIMARY_KEYWORDS = ['ループ', 'ご機嫌', 'ぼんやり'];
 const MMD_POSE_KEYWORDS = [];
 
 // インタラクション用モーションキーワード
-const MMD_TAP_KEYWORDS = ['頭かく', 'dadakko', 'chikayori'];  // タップ時（照れる、甘える）
+const MMD_TAP_KEYWORDS = ['頭かく', 'dadakko', 'chikayori', 'azatokawaii'];  // タップ時（照れる、甘える）
 const MMD_PET_KEYWORDS = ['ご機嫌', 'skip'];  // 撫でる時（嬉しい、スキップ）
+
+// 音街ウナモーション自動認識データベース（削除した14個すべて網羅）
+const OTOMACHI_UNA_MOTIONS = {
+  // Primary（キーワード：ループ、ご機嫌、ぼんやり）
+  'ご機嫌ループ': { category: 'primary', type: 'idle' },
+  'ぼんやり待ちループ': { category: 'primary', type: 'idle' },
+
+  // Tap（キーワード：頭かく、dadakko、chikayori、azatokawaii）
+  '会話モーション_頭かく': { category: 'tap', type: 'gesture' },
+  'AzatokawaiiTurn': { category: 'tap', type: 'reaction' },
+  'ChikayoriPose': { category: 'tap', type: 'reaction' },
+  'DadakkoMotion': { category: 'tap', type: 'reaction' },
+
+  // Pet（キーワード：ご機嫌、skip）
+  'Skip': { category: 'pet', type: 'happy' },
+
+  // Variants（上記のキーワードに該当しないもの）
+  'Audience': { category: 'variants', type: 'pose' },
+  'FeminineWalk': { category: 'variants', type: 'walk' },
+  'Kabedon': { category: 'variants', type: 'reaction' },
+  'Running': { category: 'variants', type: 'run' },
+  'Turn&Shootagun': { category: 'variants', type: 'reaction' },
+  'Turn_Pose': { category: 'variants', type: 'pose' },
+  'Walk+cutely+and+wave': { category: 'variants', type: 'walk' },
+  'agura_motion': { category: 'variants', type: 'sit' },
+  'zenten_motion': { category: 'variants', type: 'reaction' },
+  'モデルポージング': { category: 'variants', type: 'pose' }
+};
 
 const classifyMmdAnimations = (animations = []) => {
   if (!Array.isArray(animations) || animations.length === 0) {
@@ -208,6 +236,23 @@ const classifyMmdAnimations = (animations = []) => {
   const petAnims = [];
 
   animationFiles.forEach((anim) => {
+    // categoryプロパティがある場合は優先的に使用（インポートモーション用）
+    if (anim.category) {
+      if (anim.category === 'primary') {
+        primaryAnims.push(anim);
+        return;
+      } else if (anim.category === 'tap') {
+        tapAnims.push(anim);
+        return;
+      } else if (anim.category === 'pet') {
+        petAnims.push(anim);
+        return;
+      }
+      // category === 'variants' の場合はキーワード判定をスキップ（後でvariantsに分類される）
+      return;
+    }
+
+    // categoryがない場合は従来のキーワードマッチング
     const reference = (anim.normalized || anim.name || '').toLowerCase();
     const sanitized = anim.sanitized || sanitizeMotionKey(anim.normalized || anim.name || '');
 
@@ -467,6 +512,9 @@ function App() {
 
   // タップインタラクションプロンプト設定
   const [tapPrompts, setTapPrompts] = useState({
+    skirt: 'あなたとユーザーはとても親密な関係です。ユーザーがあなたのスカートに触れました。驚いたり、恥ずかしがって反応してください。',
+    hair: 'あなたとユーザーはとても親密な関係です。ユーザーがあなたの髪に触れました。嬉しそうに反応してください。',
+    accessory: 'あなたとユーザーはとても親密な関係です。ユーザーがあなたのアクセサリーに触れました。不思議そうに反応してください。',
     intimate: 'あなたとユーザーはとても親密な関係です。ユーザーが予想外のところに触れました。恥ずかしがったり、少し怒ったり、驚いた反応を返してください。',
     head: 'あなたとユーザーはとても親密な関係です。ユーザーがあなたの頭に触れました。照れて嬉しそうに反応してください。',
     shoulder: 'あなたとユーザーはとても親密な関係です。ユーザーがあなたの肩に触れました。普通に反応してください。',
@@ -789,6 +837,11 @@ function App() {
   const [manualLoopCount, setManualLoopCount] = useState(1);
   const [isInfiniteLoop, setIsInfiniteLoop] = useState(false);
   const [isManualPlaying, setIsManualPlaying] = useState(false);
+  const [isEditingImportedMotions, setIsEditingImportedMotions] = useState(false);
+  const [showMotionImportGuide, setShowMotionImportGuide] = useState(() => {
+    const hasSeenGuide = localStorage.getItem('hasSeenMotionImportGuide');
+    return !hasSeenGuide; // 初回はtrueを返す
+  });
   const [isRecording, setIsRecording] = useState(false);
   const [selectedModel, setSelectedModel] = useState(null); // 現在選択中のモデル
   const conversationModeRef = useRef(false);
@@ -1423,14 +1476,40 @@ function App() {
     });
   }, [favoriteMotions]);
 
+  // 音街ウナモーション自動認識
+  const detectOtomachiUnaMotion = useCallback((fileName) => {
+    const baseName = fileName.replace(/\.(zip|vmd)$/i, '');
+
+    // 完全一致チェック
+    if (OTOMACHI_UNA_MOTIONS[baseName]) {
+      return OTOMACHI_UNA_MOTIONS[baseName].category;
+    }
+
+    // 部分一致チェック（大文字小文字を無視）
+    const lowerName = baseName.toLowerCase();
+    for (const [key, value] of Object.entries(OTOMACHI_UNA_MOTIONS)) {
+      if (lowerName.includes(key.toLowerCase()) || key.toLowerCase().includes(lowerName)) {
+        return value.category;
+      }
+    }
+
+    return null; // 認識できない場合
+  }, []);
+
   // モーションインポート処理
   const handleMotionImport = useCallback(async (event) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
+    const importResults = [];
+
     for (const file of files) {
       try {
         console.log('[Import] Processing:', file.name);
+
+        // 音街ウナモーション自動認識
+        const detectedCategory = detectOtomachiUnaMotion(file.name);
+        console.log('[Import] Detected category:', detectedCategory || 'none');
 
         // ファイルをArrayBufferとして読み込み
         const arrayBuffer = await file.arrayBuffer();
@@ -1448,10 +1527,11 @@ function App() {
               imported: true,
               timestamp: Date.now(),
               fileType: 'zip',
-              data: base64 // Base64エンコードされたデータ
+              data: base64, // Base64エンコードされたデータ
+              category: detectedCategory || 'variants' // 自動認識カテゴリ（デフォルトはVariants）
             };
 
-            console.log('[Import] Adding ZIP motion to state:', newMotion.name);
+            console.log('[Import] Adding ZIP motion to state:', newMotion.name, 'category:', newMotion.category);
             setImportedMotions(prev => {
               console.log('[Import] Previous imported motions:', prev.length);
               const updated = [...prev, newMotion];
@@ -1459,6 +1539,7 @@ function App() {
               return updated;
             });
 
+            importResults.push({ name: file.name, category: newMotion.category });
             console.log('[Import] ZIP imported successfully:', file.name);
           }
         }
@@ -1470,10 +1551,11 @@ function App() {
             imported: true,
             timestamp: Date.now(),
             fileType: 'vmd',
-            data: base64 // Base64エンコードされたデータ
+            data: base64, // Base64エンコードされたデータ
+            category: detectedCategory || 'variants' // 自動認識カテゴリ（デフォルトはVariants）
           };
 
-          console.log('[Import] Adding VMD motion to state:', newMotion.name);
+          console.log('[Import] Adding VMD motion to state:', newMotion.name, 'category:', newMotion.category);
           setImportedMotions(prev => {
             console.log('[Import] Previous imported motions:', prev.length);
             const updated = [...prev, newMotion];
@@ -1481,6 +1563,7 @@ function App() {
             return updated;
           });
 
+          importResults.push({ name: file.name, category: newMotion.category });
           console.log('[Import] VMD imported successfully:', file.name);
         }
       } catch (error) {
@@ -1489,23 +1572,65 @@ function App() {
       }
     }
 
+    // インポート完了ダイアログ
+    if (importResults.length > 0) {
+      const categoryNames = {
+        primary: 'Primary（メイン）',
+        variants: 'Variants（バリエーション）',
+        tap: 'Tap（タップ時）',
+        pet: 'Pet（撫でる時）'
+      };
+
+      const message = importResults.map(r =>
+        `✓ ${r.name}\n→ ${categoryNames[r.category] || r.category}`
+      ).join('\n\n');
+
+      alert(`モーションをインポートしました！\n\n${message}`);
+    }
+
     // ファイル選択をリセット
     event.target.value = '';
-  }, []);
+  }, [detectOtomachiUnaMotion]);
 
   // インポートモーション削除
-  const deleteImportedMotion = useCallback((motion) => {
+  const deleteImportedMotion = useCallback(async (motion) => {
     if (confirm(`「${motion.name}」を削除しますか？`)) {
-      setImportedMotions(prev => prev.filter(m =>
+      // mmdResourcesから該当するURLを探してrevoke
+      if (mmdResources?.animations) {
+        const targetAnimations = mmdResources.animations.filter(anim =>
+          anim.category === motion.category && anim.name && anim.name.includes(motion.name)
+        );
+        targetAnimations.forEach(anim => {
+          if (anim.url && anim.url.startsWith('blob:')) {
+            console.log('[Import] Revoking object URL:', anim.url);
+            URL.revokeObjectURL(anim.url);
+          }
+        });
+      }
+
+      // 削除後の新しい配列を作成
+      const newImportedMotions = importedMotions.filter(m =>
         !(m.imported && m.timestamp === motion.timestamp && m.name === motion.name)
-      ));
-      // お気に入りからも削除
-      setFavoriteMotions(prev => prev.filter(m =>
+      );
+      const newFavoriteMotions = favoriteMotions.filter(m =>
         !(m.imported && m.timestamp === motion.timestamp && m.name === motion.name)
-      ));
-      console.log('[Import] Motion deleted:', motion.name);
+      );
+
+      // 状態を更新
+      setImportedMotions(newImportedMotions);
+      setFavoriteMotions(newFavoriteMotions);
+
+      // IndexedDBに即座に保存
+      await saveImportedMotions(newImportedMotions);
+      await saveFavoriteMotions(newFavoriteMotions);
+
+      // 削除後、モーションリソースを再読み込みするために参照をリセット
+      hasLoadedAdditionalMotionsRef.current = false;
+      previousImportedMotionsCountRef.current = 0; // カウントもリセット
+
+      console.log('[Import] Motion deleted and saved:', motion.name);
     }
-  }, []);
+  }, [mmdResources, importedMotions, favoriteMotions]);
 
   // モデルインポート処理
   const handleModelImport = useCallback(async (event) => {
@@ -1655,6 +1780,7 @@ function App() {
 
             // 新しいモデルのために追加モーションを再ロードできるようにフラグをリセット
             hasLoadedAdditionalMotionsRef.current = false;
+            previousImportedMotionsCountRef.current = 0;
             // モーションURLの参照もクリアして古いURLを使わないようにする
             mmdPrimaryMotionUrlRef.current = [];
             mmdVariantMotionUrlsRef.current = [];
@@ -2491,17 +2617,17 @@ function App() {
       } else if (type === 'pet') {
         basePrompt = tapPrompts.pet;
       } else if (type === 'grab') {
-        // グラブ時のプロンプト（掴まれて引っ張られた時の反応）
+        // グラブ時のプロンプト（掴まれた時の反応）
         const grabPrompts = {
-          skirt: 'あなたとユーザーはとても親密な関係です。ユーザーがあなたのスカートを掴んで引っ張ってきました。恥ずかしがって抗議したり、驚いた反応を返してください。',
+          skirt: 'あなたとユーザーはとても親密な関係です。ユーザーがあなたのスカートを掴んでめくってきました。恥ずかしがって抗議したり、驚いた反応を返してください。',
           hair: 'あなたとユーザーはとても親密な関係です。ユーザーがあなたの髪を掴んで引っ張ってきました。痛がったり、怒ったり、驚いた反応を返してください。',
-          accessory: 'あなたとユーザーはとても親密な関係です。ユーザーがあなたのアクセサリーを掴んで引っ張ってきました。驚いたり、困惑した反応を返してください。',
-          intimate: 'あなたとユーザーはとても親密な関係です。ユーザーがあなたの身体の親密な部分を掴んで引っ張ってきました。驚いたり、恥ずかしがったり、少し怒った反応を返してください。',
-          head: 'あなたとユーザーはとても親密な関係です。ユーザーがあなたの頭を掴んで引っ張ってきました。驚いたり、抗議した反応を返してください。',
-          shoulder: 'あなたとユーザーはとても親密な関係です。ユーザーがあなたの肩を掴んで引っ張ってきました。軽く驚いたり、不思議そうに反応してください。',
-          arm: 'あなたとユーザーはとても親密な関係です。ユーザーがあなたの腕を掴んで引っ張ってきました。驚いたり、軽く抗議した反応を返してください。',
-          leg: 'あなたとユーザーはとても親密な関係です。ユーザーがあなたの足を掴んで引っ張ってきました。驚いたり、困惑した反応を返してください。',
-          default: 'あなたとユーザーはとても親密な関係です。ユーザーがあなたの身体を掴んで引っ張ってきました。自然に反応してください。'
+          accessory: 'あなたとユーザーはとても親密な関係です。ユーザーがあなたのアクセサリーを掴んできました。驚いたり、困惑した反応を返してください。',
+          intimate: 'あなたとユーザーはとても親密な関係です。ユーザーがあなたの身体の親密な部分を掴んで揉んできました。驚いたり、恥ずかしがったり、少し怒った反応を返してください。',
+          head: 'あなたとユーザーはとても親密な関係です。ユーザーがあなたの頭を掴んできました。驚いたり、抗議した反応を返してください。',
+          shoulder: 'あなたとユーザーはとても親密な関係です。ユーザーがあなたの肩を掴んできました。軽く驚いたり、不思議そうに反応してください。',
+          arm: 'あなたとユーザーはとても親密な関係です。ユーザーがあなたの腕を掴んできました。驚いたり、軽く抗議した反応を返してください。',
+          leg: 'あなたとユーザーはとても親密な関係です。ユーザーがあなたの足を掴んできました。驚いたり、困惑した反応を返してください。',
+          default: 'あなたとユーザーはとても親密な関係です。ユーザーがあなたの身体を掴んできました。自然に反応してください。'
         };
         basePrompt = grabPrompts[bodyPart] || grabPrompts.default;
       }
@@ -2547,8 +2673,22 @@ ${basePrompt}${interactionDetails}
 
     // VRMモデルの場合、インタラクション時に idle_sway_alt モーションに切り替え
     if (modelType === 'vrm' && motionControls?.playMotion) {
-      console.log('[Interaction] Switching to idle_sway_alt motion for VRM');
+      console.log('[Interaction] Resetting VRM pose and switching to idle_sway_alt');
       try {
+        // 1. 現在のモーションを停止
+        if (vrmViewerRef.current?.stopCurrentMotion) {
+          vrmViewerRef.current.stopCurrentMotion();
+        }
+
+        // 2. ボーンの状態を初期ポーズにリセット
+        if (vrmViewerRef.current?.resetVrmPose) {
+          vrmViewerRef.current.resetVrmPose();
+        }
+
+        // 3. 短時間待機してからフェードイン
+        await new Promise(resolve => setTimeout(resolve, 200));
+
+        // 4. idle_sway_alt をフェードインで再生
         await motionControls.playMotion('idle_sway_alt');
       } catch (error) {
         console.warn('[Interaction] Failed to play idle_sway_alt motion:', error);
@@ -3794,13 +3934,18 @@ ${assistantMessage}`,
 
   // モーションフォルダから追加のモーションを読み込む
   const hasLoadedAdditionalMotionsRef = useRef(false);
+  const previousImportedMotionsCountRef = useRef(0);
 
   useEffect(() => {
-    if (modelType !== 'mmd' || !mmdResources || hasLoadedAdditionalMotionsRef.current) {
+    if (modelType !== 'mmd' || !mmdResources) {
       return;
     }
 
-    hasLoadedAdditionalMotionsRef.current = true;
+    // public/モーション/の読み込みが完了していて、importedMotionsも変化していない場合はスキップ
+    const importedMotionsChanged = previousImportedMotionsCountRef.current !== importedMotions.length;
+    if (hasLoadedAdditionalMotionsRef.current && !importedMotionsChanged) {
+      return;
+    }
 
     const motionFiles = [
       'Audience.zip',
@@ -3855,6 +4000,66 @@ ${assistantMessage}`,
         }
       }
 
+      // インポートモーションも統合
+      console.log('[App] Integrating imported motions:', importedMotions.length);
+      for (const motion of importedMotions) {
+        try {
+          // Base64からBlobを作成
+          const byteString = atob(motion.data);
+          const arrayBuffer = new ArrayBuffer(byteString.length);
+          const uint8Array = new Uint8Array(arrayBuffer);
+          for (let i = 0; i < byteString.length; i++) {
+            uint8Array[i] = byteString.charCodeAt(i);
+          }
+
+          const mimeType = motion.fileType === 'zip' ? 'application/zip' : 'application/octet-stream';
+          const blob = new Blob([uint8Array], { type: mimeType });
+
+          // ZIPファイルの場合は展開
+          if (motion.fileType === 'zip') {
+            const zipFile = new File([blob], motion.name, { type: 'application/zip' });
+            const extracted = await extractMmdZip(zipFile);
+
+            if (extracted && extracted.resources.animations.length > 0) {
+              console.log(`[App] Extracted imported ZIP motion: ${motion.name}, animations:`, extracted.resources.animations.length);
+
+              // 展開されたアニメーションにcategoryとimportedフラグを付与
+              extracted.resources.animations.forEach((anim) => {
+                anim.category = motion.category || 'variants';
+                anim.imported = true; // インポートモーションフラグ
+                additionalAnimations.push(anim);
+              });
+
+              extracted.resources.urls.forEach(url => additionalUrls.add(url));
+              extracted.resources.map.forEach((value, key) => {
+                if (!additionalMap.has(key)) {
+                  additionalMap.set(key, value);
+                }
+              });
+            }
+          } else {
+            // VMDファイルの場合はそのまま使用
+            const objectURL = URL.createObjectURL(blob);
+
+            // アニメーション情報を追加
+            additionalAnimations.push({
+              name: motion.name,
+              url: objectURL,
+              category: motion.category || 'variants',
+              imported: true // インポートモーションフラグ
+            });
+
+            additionalUrls.add(objectURL);
+            additionalMap.set(motion.name, objectURL);
+            additionalMap.set(objectURL, objectURL); // blob URL自体も登録
+
+            console.log('[App] Created object URL for imported VMD motion:', motion.name, 'category:', motion.category);
+          }
+        } catch (error) {
+          console.error('[App] Failed to process imported motion:', motion.name, error);
+        }
+      }
+
       console.log('[App] Additional animations loaded:', additionalAnimations.length);
 
       if (additionalAnimations.length > 0) {
@@ -3873,10 +4078,15 @@ ${assistantMessage}`,
       } else {
         console.log('[App] No additional animations were loaded');
       }
+
+      // public/モーション/の読み込みが完了
+      hasLoadedAdditionalMotionsRef.current = true;
+      // インポートモーション数を記録
+      previousImportedMotionsCountRef.current = importedMotions.length;
     };
 
     loadAdditionalMotions();
-  }, [modelType, mmdResources, extractMmdZip]);
+  }, [modelType, mmdResources, extractMmdZip, importedMotions]);
 
   useEffect(() => {
     if (!mmdResources?.animations?.length) {
@@ -4108,6 +4318,7 @@ ${assistantMessage}`,
       }
       // 新しいモデルのために追加モーションを再ロードできるようにフラグをリセット
       hasLoadedAdditionalMotionsRef.current = false;
+      previousImportedMotionsCountRef.current = 0;
       // モーションURLの参照もクリアして古いURLを使わないようにする
       mmdPrimaryMotionUrlRef.current = [];
       mmdVariantMotionUrlsRef.current = [];
@@ -5364,6 +5575,9 @@ ${assistantMessage}`,
                 <p style={{ color: '#fff', fontSize: '11px', marginBottom: '10px' }}>各部位タップ時のプロンプト</p>
 
                 {[
+                  { key: 'skirt', label: 'スカート' },
+                  { key: 'hair', label: '髪' },
+                  { key: 'accessory', label: 'アクセサリー' },
                   { key: 'head', label: '頭' },
                   { key: 'shoulder', label: '肩' },
                   { key: 'arm', label: '腕・手' },
@@ -6247,11 +6461,259 @@ ${assistantMessage}`,
         </div>
       )} */}
 
+      {/* モーションインポートガイド（初回のみ） */}
+      {showMotionImportGuide && (
+        <div className="ai-init-panel">
+          <div className="ai-init-panel-content" style={{ maxWidth: '600px' }}>
+            <h3 style={{ color: '#fff', marginTop: 0, marginBottom: '20px' }}>モーションのインポートについて</h3>
+
+            <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: '14px', lineHeight: '1.6', marginBottom: '20px' }}>
+              <p style={{ marginTop: 0, marginBottom: '15px' }}>
+                現在、デフォルトでは<strong>3種類のモーション</strong>しか用意されていません。<br/>
+                あなたのマスコットを<strong>最大限可愛く</strong>するために、モーションをインポートすることを強くおすすめします！
+              </p>
+
+              <div style={{
+                background: 'rgba(168, 85, 247, 0.1)',
+                border: '1px solid rgba(168, 85, 247, 0.3)',
+                borderRadius: '8px',
+                padding: '12px',
+                marginBottom: '20px'
+              }}>
+                <h4 style={{ color: '#c084fc', marginTop: 0, marginBottom: '8px', fontSize: '13px' }}>
+                  <i className="fas fa-heart" style={{ marginRight: '6px' }}></i>
+                  モーションを追加すると...
+                </h4>
+                <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>
+                  <li style={{ marginBottom: '4px' }}>待機中のポーズがバリエーション豊かに</li>
+                  <li style={{ marginBottom: '4px' }}>タップした時の反応がもっと可愛く</li>
+                  <li style={{ marginBottom: '4px' }}>撫でた時の嬉しそうな動きが追加</li>
+                  <li>自然な動きで、まるで生きているような表現に</li>
+                </ul>
+              </div>
+
+              <div style={{
+                background: 'rgba(59, 130, 246, 0.15)',
+                border: '1px solid rgba(59, 130, 246, 0.4)',
+                borderRadius: '8px',
+                padding: '15px',
+                marginBottom: '15px'
+              }}>
+                <h4 style={{ color: '#60a5fa', marginTop: 0, marginBottom: '10px', fontSize: '14px' }}>
+                  <i className="fas fa-star" style={{ marginRight: '8px' }}></i>
+                  おすすめ：音街ウナモーション（商用利用可能・自動認識対応）
+                </h4>
+                <p style={{ fontSize: '13px', marginBottom: '8px', color: 'rgba(255,255,255,0.8)' }}>
+                  高品質で商用利用も可能な、無料のMMDモーションセットです。<br/>
+                  <strong style={{ color: '#60a5fa' }}>カテゴリ自動認識機能</strong>に対応しており、インポートするだけで適切なカテゴリに振り分けられます。
+                </p>
+                <a
+                  href="https://otomachiuna.jp/download/download-detail4/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 16px',
+                    background: 'rgba(59, 130, 246, 0.4)',
+                    border: '1px solid rgba(59, 130, 246, 0.6)',
+                    borderRadius: '6px',
+                    color: '#fff',
+                    fontSize: '13px',
+                    textDecoration: 'none',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'rgba(59, 130, 246, 0.6)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'rgba(59, 130, 246, 0.4)';
+                  }}
+                >
+                  <i className="fas fa-external-link-alt"></i>
+                  ダウンロードページを開く
+                </a>
+              </div>
+
+              <div style={{
+                background: 'rgba(139, 92, 246, 0.1)',
+                border: '1px solid rgba(139, 92, 246, 0.3)',
+                borderRadius: '8px',
+                padding: '12px',
+                marginBottom: '20px'
+              }}>
+                <h4 style={{ color: '#a78bfa', marginTop: 0, marginBottom: '8px', fontSize: '13px' }}>
+                  <i className="fas fa-cube" style={{ marginRight: '6px' }}></i>
+                  その他のモーション：ニコニ立体
+                </h4>
+                <p style={{ fontSize: '12px', marginBottom: '8px', color: 'rgba(255,255,255,0.8)' }}>
+                  様々なクリエイターが配布している豊富なモーションライブラリです。<br/>
+                  <span style={{ color: 'rgba(255,255,255,0.6)' }}>※ これらは自動認識非対応のため、インポート時に手動でカテゴリを指定する必要があります</span>
+                </p>
+                <a
+                  href="https://3d.nicovideo.jp/search?word_type=tag&word=MMD%E3%83%A2%E3%83%BC%E3%82%B7%E3%83%A7%E3%83%B3&sort=created_at"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 12px',
+                    background: 'rgba(139, 92, 246, 0.3)',
+                    border: '1px solid rgba(139, 92, 246, 0.5)',
+                    borderRadius: '6px',
+                    color: '#a78bfa',
+                    fontSize: '12px',
+                    textDecoration: 'none',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = 'rgba(139, 92, 246, 0.5)';
+                    e.target.style.color = '#fff';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'rgba(139, 92, 246, 0.3)';
+                    e.target.style.color = '#a78bfa';
+                  }}
+                >
+                  <i className="fas fa-external-link-alt"></i>
+                  ニコニ立体で探す
+                </a>
+              </div>
+
+              <h4 style={{ color: '#fff', fontSize: '13px', marginBottom: '10px' }}>
+                <i className="fas fa-download" style={{ marginRight: '8px', color: '#60a5fa' }}></i>
+                インポート方法
+              </h4>
+              <ol style={{ paddingLeft: '20px', fontSize: '13px', color: 'rgba(255,255,255,0.8)', marginBottom: '20px' }}>
+                <li style={{ marginBottom: '8px' }}>ダウンロードしたZIPファイルを<strong>展開せずそのまま</strong>使用</li>
+                <li style={{ marginBottom: '8px' }}>ヘッダー左上の<strong>人アイコン</strong>をクリックしてモーション選択画面を開く</li>
+                <li style={{ marginBottom: '8px' }}>右上の「インポート」ボタンからファイルを選択</li>
+                <li>自動的にカテゴリが認識され、すぐに使えます！</li>
+              </ol>
+
+              <h4 style={{ color: '#fff', fontSize: '13px', marginBottom: '10px' }}>
+                <i className="fas fa-magic" style={{ marginRight: '8px', color: '#c084fc' }}></i>
+                自動認識機能（音街ウナモーションのみ）
+              </h4>
+              <div style={{
+                background: 'rgba(34, 197, 94, 0.1)',
+                border: '1px solid rgba(34, 197, 94, 0.3)',
+                borderRadius: '6px',
+                padding: '12px',
+                fontSize: '12px',
+                color: 'rgba(255,255,255,0.8)'
+              }}>
+                <p style={{ margin: 0, marginBottom: '8px' }}>音街ウナモーションは、自動的に以下のカテゴリに分類されます：</p>
+                <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                  <li><strong style={{ color: '#86efac' }}>Primary</strong>：待機ループモーション（自動で繰り返し再生）</li>
+                  <li><strong style={{ color: '#c084fc' }}>Variants</strong>：バリエーションモーション（ランダムに切り替わる）</li>
+                  <li><strong style={{ color: '#60a5fa' }}>Tap</strong>：タップ時のリアクション</li>
+                  <li><strong style={{ color: '#f9a8d4' }}>Pet</strong>：撫でる時のモーション</li>
+                </ul>
+                <p style={{ margin: '8px 0 0 0', fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>
+                  ※ その他のモーションは、インポート時に手動でカテゴリを選択してください
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <button
+                onClick={() => {
+                  localStorage.setItem('hasSeenMotionImportGuide', 'true');
+                  setShowMotionImportGuide(false);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  background: 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: '8px',
+                  color: 'rgba(255,255,255,0.7)',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = 'rgba(255,255,255,0.15)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'rgba(255,255,255,0.1)';
+                }}
+              >
+                後で
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.setItem('hasSeenMotionImportGuide', 'true');
+                  setShowMotionImportGuide(false);
+                  setShowMotionSelector(true);
+                }}
+                className="ai-init-btn"
+                style={{ flex: 1 }}
+              >
+                今すぐインポート
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* モーション選択パネル */}
       {showMotionSelector && (
         <div className="ai-init-panel">
           <div className="ai-init-panel-content">
             <h3 style={{ color: '#fff', marginTop: 0, marginBottom: '20px' }}>モーション選択</h3>
+
+            {/* 音街ウナモーション推奨ガイド */}
+            <div style={{
+              background: 'rgba(59, 130, 246, 0.1)',
+              border: '1px solid rgba(59, 130, 246, 0.3)',
+              borderRadius: '8px',
+              padding: '12px',
+              marginBottom: '15px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <i className="fas fa-info-circle" style={{ color: '#3b82f6' }}></i>
+                <h4 style={{ color: '#fff', margin: 0, fontSize: '13px' }}>推奨モーション</h4>
+              </div>
+              <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '11px', margin: '0 0 8px 0', lineHeight: '1.5' }}>
+                <strong>音街ウナモーション</strong>（商用利用可能）
+              </p>
+              <a
+                href="https://otomachiuna.jp/download/download-detail4/"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '4px 10px',
+                  background: 'rgba(59, 130, 246, 0.3)',
+                  border: '1px solid rgba(59, 130, 246, 0.5)',
+                  borderRadius: '4px',
+                  color: '#60a5fa',
+                  fontSize: '10px',
+                  textDecoration: 'none',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = 'rgba(59, 130, 246, 0.5)';
+                  e.target.style.color = '#fff';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'rgba(59, 130, 246, 0.3)';
+                  e.target.style.color = '#60a5fa';
+                }}
+              >
+                <i className="fas fa-external-link-alt"></i>
+                ダウンロードページを開く
+              </a>
+              <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '10px', margin: '8px 0 0 0' }}>
+                ※インポート時に自動で適切なカテゴリに振り分けられます
+              </p>
+            </div>
 
             <div style={{ marginBottom: '20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -6369,10 +6831,37 @@ ${assistantMessage}`,
                       paddingLeft: '4px',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px'
+                      justifyContent: 'space-between'
                     }}>
-                      <i className="fas fa-file-import"></i>
-                      インポートモーション
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <i className="fas fa-file-import"></i>
+                        インポートモーション
+                      </div>
+                      <button
+                        onClick={() => setIsEditingImportedMotions(!isEditingImportedMotions)}
+                        style={{
+                          background: isEditingImportedMotions ? 'rgba(59, 130, 246, 0.3)' : 'rgba(255,255,255,0.1)',
+                          border: '1px solid ' + (isEditingImportedMotions ? 'rgba(59, 130, 246, 0.5)' : 'rgba(255,255,255,0.2)'),
+                          borderRadius: '4px',
+                          color: isEditingImportedMotions ? '#60a5fa' : 'rgba(255,255,255,0.6)',
+                          cursor: 'pointer',
+                          fontSize: '10px',
+                          padding: '3px 8px',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isEditingImportedMotions) {
+                            e.target.style.background = 'rgba(255,255,255,0.15)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isEditingImportedMotions) {
+                            e.target.style.background = 'rgba(255,255,255,0.1)';
+                          }
+                        }}
+                      >
+                        {isEditingImportedMotions ? '完了' : '編集'}
+                      </button>
                     </div>
                     {importedMotions.map((motion, index) => {
                       const displayName = motion.name;
@@ -6402,7 +6891,13 @@ ${assistantMessage}`,
                         >
                           <div onClick={() => setSelectedMotionData(motion)} style={{ flex: 1 }}>
                             <div style={{ color: '#fff', fontSize: '12px', marginBottom: '2px' }}>{displayName}</div>
-                            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '10px' }}>{motion.fileType?.toUpperCase()}</div>
+                            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '10px' }}>
+                              {motion.category === 'primary' ? 'Primary' :
+                               motion.category === 'variants' ? 'Variant' :
+                               motion.category === 'tap' ? 'Tap' :
+                               motion.category === 'pet' ? 'Pet' :
+                               'Other'}
+                            </div>
                           </div>
                           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                             <i
@@ -6418,20 +6913,34 @@ ${assistantMessage}`,
                                 padding: '4px'
                               }}
                             ></i>
-                            <i
-                              className="fas fa-trash"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteImportedMotion(motion);
-                              }}
-                              style={{
-                                color: 'rgba(239, 68, 68, 0.7)',
-                                cursor: 'pointer',
-                                fontSize: '13px',
-                                padding: '4px'
-                              }}
-                              data-tooltip="削除"
-                            ></i>
+                            {isEditingImportedMotions && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteImportedMotion(motion);
+                                }}
+                                style={{
+                                  background: 'rgba(239, 68, 68, 0.2)',
+                                  border: '1px solid rgba(239, 68, 68, 0.5)',
+                                  borderRadius: '4px',
+                                  color: '#f87171',
+                                  cursor: 'pointer',
+                                  fontSize: '11px',
+                                  padding: '4px 8px',
+                                  transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.target.style.background = 'rgba(239, 68, 68, 0.4)';
+                                  e.target.style.color = '#fff';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.target.style.background = 'rgba(239, 68, 68, 0.2)';
+                                  e.target.style.color = '#f87171';
+                                }}
+                              >
+                                削除
+                              </button>
+                            )}
                           </div>
                         </div>
                       );
@@ -6455,7 +6964,7 @@ ${assistantMessage}`,
                     デフォルトモーション
                   </div>
                   {(() => {
-                    const baseMotions = mmdAllAnimationsRef.current || [];
+                    const baseMotions = (mmdAllAnimationsRef.current || []).filter(motion => !motion.imported);
                     return baseMotions.map((motion, index) => {
                       const displayName = motion.name || motion.url.split('/').pop().replace('.vmd', '');
                       const isSelected = selectedMotionData?.url === motion.url && !selectedMotionData?.imported;

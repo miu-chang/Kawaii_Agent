@@ -15,6 +15,7 @@ import { GestureManager } from '../utils/vrmGestures';
 import { IdleAnimationManager } from '../utils/vrmIdleAnimations';
 import { VRMAAnimationManager } from '../utils/vrmaLoader';
 import aiService from '../services/aiService';
+import { parsePMXMaterialMorphs } from '../utils/pmxParser';
 
 // Ammo.js初期化（グローバル）- OOM対策：大きなヒープサイズを確保
 let AmmoInstance = null;
@@ -707,12 +708,48 @@ function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = t
                   // クールダウン更新
                   lastTapReaction.current = now;
 
-                  const bodyPart = getBoneCategory(grabbedBone.name);
-                  onInteraction({
-                    type: 'grab',
-                    bodyPart,
-                    boneName: grabbedBone.name
-                  });
+                  const grabbedBoneName = grabbedBone.name;
+                  const bodyPart = getBoneCategory(grabbedBoneName);
+
+                  // GPT-5 nanoで部位カテゴリを判定（非同期）
+                  if (grabbedBoneName && aiService.isReady) {
+                    (async () => {
+                      try {
+                        const categoryResult = await aiService.simpleQuery(
+                          `ボーン名: "${grabbedBoneName}"\n\nこのボーンは以下のどのカテゴリに属しますか？カテゴリ名のみ答えてください：\n- skirt（スカート）\n- hair（髪）\n- accessory（アクセサリー、装飾品）\n- intimate（胸、腰、太もも、お尻など親密な部位）\n- head（頭、顔）\n- shoulder（肩）\n- arm（腕、手）\n- leg（脛、足）\n- default（その他）`,
+                          'あなたは3Dモデルのボーン名から体の部位カテゴリを判定するAIです。カテゴリ名のみ答えてください。',
+                          { model: 'gpt-5-nano', maxTokens: 20 }
+                        );
+                        const gptCategory = categoryResult.trim().toLowerCase();
+                        const validCategories = ['skirt', 'hair', 'accessory', 'intimate', 'head', 'shoulder', 'arm', 'leg', 'default'];
+                        const finalCategory = validCategories.includes(gptCategory) ? gptCategory : bodyPart;
+
+                        console.log('[GPT-5 nano] Grab body part category:', { boneName: grabbedBoneName, getBoneCategory: bodyPart, gptCategory: finalCategory });
+
+                        // GPT判定結果でコールバック
+                        onInteraction({
+                          type: 'grab',
+                          bodyPart: finalCategory,
+                          boneName: grabbedBoneName
+                        });
+                      } catch (error) {
+                        console.error('[GPT-5 nano] Failed to identify grab body part category:', error);
+                        // フォールバック
+                        onInteraction({
+                          type: 'grab',
+                          bodyPart,
+                          boneName: grabbedBoneName
+                        });
+                      }
+                    })();
+                  } else {
+                    // GPT判定なし（即座の反応）
+                    onInteraction({
+                      type: 'grab',
+                      bodyPart,
+                      boneName: grabbedBoneName
+                    });
+                  }
                 } else {
                   console.log('[VRM Grab] Interaction ignored - cooldown active');
                 }
@@ -868,12 +905,48 @@ function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = t
 
                 // グラブインタラクションコールバックを呼ぶ
                 if (enableInteraction && onInteraction) {
-                  const bodyPart = getBoneCategory(grabbedBone.name);
-                  onInteraction({
-                    type: 'grab',
-                    bodyPart,
-                    boneName: grabbedBone.name
-                  });
+                  const grabbedBoneName = grabbedBone.name;
+                  const bodyPart = getBoneCategory(grabbedBoneName);
+
+                  // GPT-5 nanoで部位カテゴリを判定（非同期）
+                  if (grabbedBoneName && aiService.isReady) {
+                    (async () => {
+                      try {
+                        const categoryResult = await aiService.simpleQuery(
+                          `ボーン名: "${grabbedBoneName}"\n\nこのボーンは以下のどのカテゴリに属しますか？カテゴリ名のみ答えてください：\n- skirt（スカート）\n- hair（髪）\n- accessory（アクセサリー、装飾品）\n- intimate（胸、腰、太もも、お尻など親密な部位）\n- head（頭、顔）\n- shoulder（肩）\n- arm（腕、手）\n- leg（脛、足）\n- default（その他）`,
+                          'あなたは3Dモデルのボーン名から体の部位カテゴリを判定するAIです。カテゴリ名のみ答えてください。',
+                          { model: 'gpt-5-nano', maxTokens: 20 }
+                        );
+                        const gptCategory = categoryResult.trim().toLowerCase();
+                        const validCategories = ['skirt', 'hair', 'accessory', 'intimate', 'head', 'shoulder', 'arm', 'leg', 'default'];
+                        const finalCategory = validCategories.includes(gptCategory) ? gptCategory : bodyPart;
+
+                        console.log('[GPT-5 nano] Grab body part category:', { boneName: grabbedBoneName, getBoneCategory: bodyPart, gptCategory: finalCategory });
+
+                        // GPT判定結果でコールバック
+                        onInteraction({
+                          type: 'grab',
+                          bodyPart: finalCategory,
+                          boneName: grabbedBoneName
+                        });
+                      } catch (error) {
+                        console.error('[GPT-5 nano] Failed to identify grab body part category:', error);
+                        // フォールバック
+                        onInteraction({
+                          type: 'grab',
+                          bodyPart,
+                          boneName: grabbedBoneName
+                        });
+                      }
+                    })();
+                  } else {
+                    // GPT判定なし（即座の反応）
+                    onInteraction({
+                      type: 'grab',
+                      bodyPart,
+                      boneName: grabbedBoneName
+                    });
+                  }
                 }
               }
             }
@@ -1051,7 +1124,9 @@ function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = t
                          name.includes('口') || name.toLowerCase().includes('mouth') || name.toLowerCase().includes('lip') ||
                          name.includes('頭') || name.toLowerCase().includes('head') ||
                          name.includes('首') || name.toLowerCase().includes('neck') ||
-                         name.includes('眉') || name.toLowerCase().includes('eyebrow') || name.toLowerCase().includes('brow') || name.includes('まゆ');
+                         name.includes('眉') || name.toLowerCase().includes('eyebrow') || name.toLowerCase().includes('brow') || name.includes('まゆ') ||
+                         name.includes('手') || name.toLowerCase().includes('hand') || name.toLowerCase().includes('finger') || name.toLowerCase().includes('thumb') ||
+                         name.includes('腕') || name.toLowerCase().includes('arm') || name.toLowerCase().includes('shoulder');
                 };
 
                 // Spring Boneに物理的な外力を加える
@@ -1108,12 +1183,12 @@ function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = t
             (async () => {
               try {
                 const categoryResult = await aiService.simpleQuery(
-                  `ボーン名: "${tappedBoneName}"\n\nこのボーンは以下のどのカテゴリに属しますか？カテゴリ名のみ答えてください：\n- intimate（胸、腰、太もも、お尻など親密な部位）\n- head（頭、顔）\n- shoulder（肩）\n- arm（腕、手）\n- leg（脛、足）\n- default（その他）`,
+                  `ボーン名: "${tappedBoneName}"\n\nこのボーンは以下のどのカテゴリに属しますか？カテゴリ名のみ答えてください：\n- skirt（スカート）\n- hair（髪）\n- accessory（アクセサリー、装飾品）\n- intimate（胸、腰、太もも、お尻など親密な部位）\n- head（頭、顔）\n- shoulder（肩）\n- arm（腕、手）\n- leg（脛、足）\n- default（その他）`,
                   'あなたは3Dモデルのボーン名から体の部位カテゴリを判定するAIです。カテゴリ名のみ答えてください。',
                   { model: 'gpt-5-nano', maxTokens: 20 }
                 );
                 const gptCategory = categoryResult.trim().toLowerCase();
-                const validCategories = ['intimate', 'head', 'shoulder', 'arm', 'leg', 'default'];
+                const validCategories = ['skirt', 'hair', 'accessory', 'intimate', 'head', 'shoulder', 'arm', 'leg', 'default'];
                 const finalCategory = validCategories.includes(gptCategory) ? gptCategory : bodyPart;
 
                 console.log('[GPT-5 nano] Body part category:', { boneName: tappedBoneName, getBoneCategory: bodyPart, gptCategory: finalCategory });
@@ -1475,6 +1550,10 @@ function VRMModel({ url, onLoad, enableMouseFollow = true, enableInteraction = t
 
         const rightHand = humanoid.getRawBoneNode('rightHand');
         if (rightHand) {
+          // デバッグ: タイピングアニメーション実行を確認
+          if (Math.random() < 0.01) {
+            console.log('[Typing Animation] rightHand rotation being applied, allowOverlay:', allowOverlay);
+          }
           rightHand.rotation.z = Math.sin(time * typingSpeed) * typingIntensity;
           rightHand.rotation.x = Math.sin(time * typingSpeed * 1.3) * typingIntensity * 0.5;
         }
@@ -2563,6 +2642,102 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
 
         console.log('[MMDModel] Model loaded successfully');
 
+        // === Loader内部データのダンプ ===
+        console.log('[MMD Loader Debug] loader.parser:', loader.parser);
+        console.log('[MMD Loader Debug] parser keys:', Object.keys(loader.parser || {}));
+
+        // Parserの内部を探索
+        if (loader.parser) {
+          const parser = loader.parser;
+          console.log('[MMD Parser Debug] parser.metadata:', parser.metadata);
+          console.log('[MMD Parser Debug] parser.morphs:', parser.morphs);
+          console.log('[MMD Parser Debug] parser data keys:', Object.keys(parser).filter(k => k.includes('morph') || k.includes('data')));
+        }
+
+        // === Mesh全体構造のダンプ ===
+        console.log('[MMD Mesh Debug] mesh type:', mesh.type);
+        console.log('[MMD Mesh Debug] mesh keys:', Object.keys(mesh));
+        console.log('[MMD Mesh Debug] Full mesh.userData:', mesh.userData);
+        console.log('[MMD Mesh Debug] Full mesh.geometry:', mesh.geometry);
+
+        // MMDメタデータを保存（マテリアルモーフ用）
+        console.log('[MMD Debug] mesh.userData:', Object.keys(mesh.userData || {}));
+        console.log('[MMD Debug] mesh.geometry.userData:', Object.keys(mesh.geometry?.userData || {}));
+        console.log('[MMD Debug] mesh.userData.MMD exists:', !!mesh.userData?.MMD);
+        console.log('[MMD Debug] mesh.geometry.userData.MMD exists:', !!mesh.geometry?.userData?.MMD);
+
+        // mesh.userDataまたはmesh.geometry.userDataからMMDメタデータを探す
+        const mmdData = mesh.userData?.MMD || mesh.geometry?.userData?.MMD;
+
+        if (mmdData) {
+          console.log('[MMD Debug] MMD keys:', Object.keys(mmdData));
+          console.log('[MMD Debug] morphs exists:', !!mmdData.morphs);
+          console.log('[MMD Debug] morphs length:', mmdData.morphs?.length);
+
+          // morphsが別の場所にある可能性を確認
+          if (mmdData.materials) {
+            console.log('[MMD Debug] materials count:', mmdData.materials.length);
+            // 最初のマテリアルの構造を確認
+            if (mmdData.materials[0]) {
+              console.log('[MMD Debug] First material keys:', Object.keys(mmdData.materials[0]));
+              console.log('[MMD Debug] First material sample:', mmdData.materials[0]);
+            }
+          }
+          if (mmdData.meshes) {
+            console.log('[MMD Debug] meshes:', mmdData.meshes?.length);
+            if (mmdData.meshes?.[0]) {
+              console.log('[MMD Debug] meshes[0] keys:', Object.keys(mmdData.meshes[0]));
+              if (mmdData.meshes[0].morphs) {
+                console.log('[MMD Debug] meshes[0].morphs:', mmdData.meshes[0].morphs.length);
+                console.log('[MMD Debug] First morph:', mmdData.meshes[0].morphs[0]);
+              }
+            }
+          }
+
+          window._mmdMetadata = mmdData;
+          console.log('[MMD] Saved MMD metadata');
+        } else {
+          console.warn('[MMD] No MMD metadata found');
+        }
+
+        // PMXファイルから直接マテリアルモーフ情報を取得
+        (async () => {
+          try {
+            console.log('[PMX] Parsing material morphs from:', url);
+            const materialMorphs = await parsePMXMaterialMorphs(url);
+            window._mmdMaterialMorphs = materialMorphs;
+            console.log('[PMX] Loaded', materialMorphs.length, 'material morphs');
+          } catch (error) {
+            console.error('[PMX] Failed to parse material morphs:', error);
+          }
+        })();
+
+        // morphTargetDictionaryを確認（モーフ情報は通常ここに適用済み）
+        let totalMorphTargets = 0;
+        mesh.traverse((child) => {
+          if (child.isMesh && child.morphTargetDictionary) {
+            const morphNames = Object.keys(child.morphTargetDictionary);
+            if (morphNames.length > 0) {
+              totalMorphTargets += morphNames.length;
+              console.log('[MMD Debug] Found morphTargetDictionary with', morphNames.length, 'morphs');
+              console.log('[MMD Debug] First 10 morph names:', morphNames.slice(0, 10));
+
+              // 「しいたけ」のデータを確認
+              const shiitakeIndex = child.morphTargetDictionary['しいたけ'];
+              if (shiitakeIndex !== undefined && child.geometry.morphAttributes.position) {
+                const shiitakeData = child.geometry.morphAttributes.position[shiitakeIndex];
+                if (shiitakeData) {
+                  const first10Values = Array.from(shiitakeData.array.slice(0, 30));
+                  const nonZeroCount = Array.from(shiitakeData.array).filter(v => v !== 0).length;
+                  console.log('[MMD しいたけ] First 10 vertices:', first10Values);
+                  console.log('[MMD しいたけ] Non-zero values:', nonZeroCount, '/', shiitakeData.array.length);
+                }
+              }
+            }
+          }
+        });
+        console.log('[MMD Debug] Total morph targets found:', totalMorphTargets);
+
         // 物理演算情報をチェック
         if (mesh.geometry && mesh.geometry.userData) {
           const userData = mesh.geometry.userData;
@@ -3142,13 +3317,53 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
                 // クールダウン更新
                 lastMMDInteractionRef.current = now;
 
-                const bodyPart = getBoneCategory(mmdGrabbedBone.name);
-                if (onInteractionRef.current) {
-                  onInteractionRef.current({
-                    type: 'grab',
-                    bodyPart,
-                    boneName: mmdGrabbedBone.name
-                  });
+                const grabbedBoneName = mmdGrabbedBone.name;
+                const bodyPart = getBoneCategory(grabbedBoneName);
+
+                // GPT-5 nanoで部位カテゴリを判定（非同期）
+                if (grabbedBoneName && aiService.isReady) {
+                  (async () => {
+                    try {
+                      const categoryResult = await aiService.simpleQuery(
+                        `ボーン名: "${grabbedBoneName}"\n\nこのボーンは以下のどのカテゴリに属しますか？カテゴリ名のみ答えてください：\n- skirt（スカート）\n- hair（髪）\n- accessory（アクセサリー、装飾品）\n- intimate（胸、腰、太もも、お尻など親密な部位）\n- head（頭、顔）\n- shoulder（肩）\n- arm（腕、手）\n- leg（脛、足）\n- default（その他）`,
+                        'あなたは3Dモデルのボーン名から体の部位カテゴリを判定するAIです。カテゴリ名のみ答えてください。',
+                        { model: 'gpt-5-nano', maxTokens: 20 }
+                      );
+                      const gptCategory = categoryResult.trim().toLowerCase();
+                      const validCategories = ['skirt', 'hair', 'accessory', 'intimate', 'head', 'shoulder', 'arm', 'leg', 'default'];
+                      const finalCategory = validCategories.includes(gptCategory) ? gptCategory : bodyPart;
+
+                      console.log('[GPT-5 nano] MMD Grab body part category:', { boneName: grabbedBoneName, getBoneCategory: bodyPart, gptCategory: finalCategory });
+
+                      // GPT判定結果でコールバック
+                      if (onInteractionRef.current) {
+                        onInteractionRef.current({
+                          type: 'grab',
+                          bodyPart: finalCategory,
+                          boneName: grabbedBoneName
+                        });
+                      }
+                    } catch (error) {
+                      console.error('[GPT-5 nano] Failed to identify MMD grab body part category:', error);
+                      // フォールバック
+                      if (onInteractionRef.current) {
+                        onInteractionRef.current({
+                          type: 'grab',
+                          bodyPart,
+                          boneName: grabbedBoneName
+                        });
+                      }
+                    }
+                  })();
+                } else {
+                  // GPT判定なし（即座の反応）
+                  if (onInteractionRef.current) {
+                    onInteractionRef.current({
+                      type: 'grab',
+                      bodyPart,
+                      boneName: grabbedBoneName
+                    });
+                  }
                 }
               } else {
                 console.log('[MMD Grab] Interaction ignored - cooldown active');
@@ -3305,13 +3520,53 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
                   // クールダウン更新
                   lastMMDInteractionRef.current = now;
 
-                  const bodyPart = getBoneCategory(mmdGrabbedBone.name);
-                  if (onInteractionRef.current) {
-                    onInteractionRef.current({
-                      type: 'grab',
-                      bodyPart,
-                      boneName: mmdGrabbedBone.name
-                    });
+                  const grabbedBoneName = mmdGrabbedBone.name;
+                  const bodyPart = getBoneCategory(grabbedBoneName);
+
+                  // GPT-5 nanoで部位カテゴリを判定（非同期）
+                  if (grabbedBoneName && aiService.isReady) {
+                    (async () => {
+                      try {
+                        const categoryResult = await aiService.simpleQuery(
+                          `ボーン名: "${grabbedBoneName}"\n\nこのボーンは以下のどのカテゴリに属しますか？カテゴリ名のみ答えてください：\n- skirt（スカート）\n- hair（髪）\n- accessory（アクセサリー、装飾品）\n- intimate（胸、腰、太もも、お尻など親密な部位）\n- head（頭、顔）\n- shoulder（肩）\n- arm（腕、手）\n- leg（脛、足）\n- default（その他）`,
+                          'あなたは3Dモデルのボーン名から体の部位カテゴリを判定するAIです。カテゴリ名のみ答えてください。',
+                          { model: 'gpt-5-nano', maxTokens: 20 }
+                        );
+                        const gptCategory = categoryResult.trim().toLowerCase();
+                        const validCategories = ['skirt', 'hair', 'accessory', 'intimate', 'head', 'shoulder', 'arm', 'leg', 'default'];
+                        const finalCategory = validCategories.includes(gptCategory) ? gptCategory : bodyPart;
+
+                        console.log('[GPT-5 nano] MMD Grab body part category:', { boneName: grabbedBoneName, getBoneCategory: bodyPart, gptCategory: finalCategory });
+
+                        // GPT判定結果でコールバック
+                        if (onInteractionRef.current) {
+                          onInteractionRef.current({
+                            type: 'grab',
+                            bodyPart: finalCategory,
+                            boneName: grabbedBoneName
+                          });
+                        }
+                      } catch (error) {
+                        console.error('[GPT-5 nano] Failed to identify MMD grab body part category:', error);
+                        // フォールバック
+                        if (onInteractionRef.current) {
+                          onInteractionRef.current({
+                            type: 'grab',
+                            bodyPart,
+                            boneName: grabbedBoneName
+                          });
+                        }
+                      }
+                    })();
+                  } else {
+                    // GPT判定なし（即座の反応）
+                    if (onInteractionRef.current) {
+                      onInteractionRef.current({
+                        type: 'grab',
+                        bodyPart,
+                        boneName: grabbedBoneName
+                      });
+                    }
                   }
                 } else {
                   console.log('[MMD Grab] Interaction ignored - cooldown active');
@@ -3522,12 +3777,12 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
               (async () => {
                 try {
                   const categoryResult = await aiService.simpleQuery(
-                    `ボーン名: "${tappedBoneName}"\n\nこのボーンは以下のどのカテゴリに属しますか？カテゴリ名のみ答えてください：\n- intimate（胸、腰、太もも、お尻など親密な部位）\n- head（頭、顔）\n- shoulder（肩）\n- arm（腕、手）\n- leg（脛、足）\n- default（その他）`,
+                    `ボーン名: "${tappedBoneName}"\n\nこのボーンは以下のどのカテゴリに属しますか？カテゴリ名のみ答えてください：\n- skirt（スカート）\n- hair（髪）\n- accessory（アクセサリー、装飾品）\n- intimate（胸、腰、太もも、お尻など親密な部位）\n- head（頭、顔）\n- shoulder（肩）\n- arm（腕、手）\n- leg（脛、足）\n- default（その他）`,
                     'あなたは3Dモデルのボーン名から体の部位カテゴリを判定するAIです。カテゴリ名のみ答えてください。',
                     { model: 'gpt-5-nano', maxTokens: 20 }
                   );
                   const gptCategory = categoryResult.trim().toLowerCase();
-                  const validCategories = ['intimate', 'head', 'shoulder', 'arm', 'leg', 'default'];
+                  const validCategories = ['skirt', 'hair', 'accessory', 'intimate', 'head', 'shoulder', 'arm', 'leg', 'default'];
                   const finalCategory = validCategories.includes(gptCategory) ? gptCategory : bodyPart;
 
                   console.log('[GPT-5 nano] MMD Body part category:', { boneName: tappedBoneName, getBoneCategory: bodyPart, gptCategory: finalCategory });
@@ -4800,6 +5055,9 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
 
           const hasEyeClosedMorph = soloMorphFound !== undefined;
 
+          // MMDメタデータをグローバルから取得（forEach内で参照できるように）
+          const mmdMetadata = window._mmdMetadata || null;
+
           lipSyncTargets.forEach((target, targetIndex) => {
             const mesh = target.mesh;
             console.log(`[MMD Expression] Target ${targetIndex}:`, {
@@ -4810,29 +5068,85 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
 
             if (!mesh || !mesh.morphTargetDictionary || !mesh.morphTargetInfluences) return;
 
+            // マテリアルモーフ適用ヘルパー関数
+            const applyMaterialMorph = (mesh, mmdMorph, weight) => {
+              if (!mmdMorph || !mmdMorph.elements) return false;
+
+              mmdMorph.elements.forEach(element => {
+                const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+                const targetMaterial = materials[element.index] || materials[0];
+
+                if (!targetMaterial) return;
+
+                // 乗算モードと加算モードの処理
+                const applyValue = (base, add, mul) => {
+                  return base * mul + add * weight;
+                };
+
+                // Diffuse (拡散色)
+                if (element.diffuse) {
+                  const r = applyValue(targetMaterial.color.r, element.diffuse[0], element.diffuse[3]);
+                  const g = applyValue(targetMaterial.color.g, element.diffuse[1], element.diffuse[3]);
+                  const b = applyValue(targetMaterial.color.b, element.diffuse[2], element.diffuse[3]);
+                  targetMaterial.color.setRGB(r, g, b);
+                }
+
+                // Specular (鏡面反射色)
+                if (element.specular && targetMaterial.specular) {
+                  const r = applyValue(targetMaterial.specular.r, element.specular[0], element.specular[3]);
+                  const g = applyValue(targetMaterial.specular.g, element.specular[1], element.specular[3]);
+                  const b = applyValue(targetMaterial.specular.b, element.specular[2], element.specular[3]);
+                  targetMaterial.specular.setRGB(r, g, b);
+                }
+
+                // Opacity (不透明度)
+                if (element.opacity !== undefined) {
+                  targetMaterial.opacity = applyValue(targetMaterial.opacity, element.opacity[0], element.opacity[1]);
+                  targetMaterial.transparent = targetMaterial.opacity < 1.0;
+                }
+
+                targetMaterial.needsUpdate = true;
+              });
+
+              return true;
+            };
+
             // 選択されたモーフを適用
             morphsToApply.forEach((selectedMorphName) => {
-              // 母音モーフは口パクで制御しているので除外
-              if (vowelMorphs.some(v => selectedMorphName.includes(v))) {
+              // 母音モーフは口パクで制御しているので除外（完全一致のみ）
+              if (vowelMorphs.includes(selectedMorphName)) {
                 console.log(`[MMD Expression] Skipped vowel morph: ${selectedMorphName}`);
                 return;
               }
 
               console.log(`[MMD Expression] Looking for morph: ${selectedMorphName}`);
 
-              // まず完全一致を探す
+              // マテリアルモーフかチェック
+              const materialMorphs = window._mmdMaterialMorphs || [];
+              const materialMorph = materialMorphs.find(m => m.name === selectedMorphName);
+
+              if (materialMorph) {
+                // マテリアルモーフとして適用
+                const applied = applyMaterialMorph(mesh, materialMorph, 1.0);
+                if (applied) {
+                  console.log(`[MMD Expression] Applied material morph: ${selectedMorphName}`);
+                  return; // 次のモーフへ
+                }
+              }
+
+              // 頂点モーフとして適用
               let foundMatch = false;
               const exactMatch = Object.keys(mesh.morphTargetDictionary).find(
                 morphName => morphName === selectedMorphName
               );
 
               if (exactMatch) {
-                // 完全一致が見つかった場合、それだけを適用
+                // 完全一致が見つかった場合、頂点モーフとして適用
                 const morphIndex = mesh.morphTargetDictionary[exactMatch];
                 if (typeof morphIndex === 'number') {
                   mesh.morphTargetInfluences[morphIndex] = 1.0;
-                  console.log(`[MMD Expression] Applied (exact match) ${exactMatch} = 1.0 (index: ${morphIndex})`);
                   foundMatch = true;
+                  console.log(`[MMD Expression] Applied vertex morph: ${selectedMorphName} at index ${morphIndex}`);
                 }
               } else {
                 // 完全一致がない場合のみ部分一致を探す
@@ -4842,7 +5156,6 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
                     const morphIndex = mesh.morphTargetDictionary[morphName];
                     if (typeof morphIndex === 'number') {
                       mesh.morphTargetInfluences[morphIndex] = 1.0;
-                      console.log(`[MMD Expression] Applied (partial match) ${morphName} = 1.0 (index: ${morphIndex})`);
                       foundMatch = true;
                     }
                   }
@@ -4862,7 +5175,6 @@ function MMDModel({ url, onLoad, vmdUrls = [], fileMap, onAnimationDuration, onM
                   const morphIndex = mesh.morphTargetDictionary[morphName];
                   if (typeof morphIndex === 'number') {
                     mesh.morphTargetInfluences[morphIndex] = 0;
-                    console.log(`[MMD Expression] Disabled blink morph: ${morphName}`);
                   }
                 }
               });
@@ -5402,6 +5714,39 @@ const VRMViewer = forwardRef(({ modelUrl, modelType = 'auto', onMotionReady, ena
       run();
 
       console.log('[VRMViewer] MMD clone reset complete - mesh replaced');
+    },
+    stopCurrentMotion: () => {
+      // VRMAアニメーションマネージャーを停止
+      if (vrmaAnimationManagerRef.current) {
+        vrmaAnimationManagerRef.current.stop(0.2);
+        console.log('[VRMViewer] Stopped current VRMA motion');
+      }
+    },
+    resetVrmPose: () => {
+      // VRMの全ボーンを初期ポーズにリセット
+      const vrm = vrmRef.current;
+      if (!vrm || !vrm.humanoid) {
+        console.warn('[VRMViewer] No VRM to reset pose');
+        return;
+      }
+
+      console.log('[VRMViewer] Resetting VRM pose to initial state');
+
+      // 全ボーンを初期状態にリセット
+      vrm.scene.traverse((node) => {
+        if (node.isBone || node.type === 'Bone') {
+          // 回転をリセット（アイデンティティ）
+          node.quaternion.set(0, 0, 0, 1);
+          // 位置はそのまま（スケルトン構造を維持）
+        }
+      });
+
+      // Spring Boneもリセット
+      if (vrm.springBoneManager) {
+        vrm.springBoneManager.reset();
+      }
+
+      console.log('[VRMViewer] VRM pose reset complete');
     }
   }), [mmdFileMap]);
 

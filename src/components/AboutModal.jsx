@@ -306,28 +306,42 @@ const AboutModal = ({ isOpen, onClose }) => {
                 <div style={{ marginTop: '12px' }}>
                   <p><strong>VRMAアニメーション（64種）</strong></p>
                   <p style={{ fontSize: '11px', color: '#aaa' }}>
-                    Adobe Mixamo<br/>
+                    © Adobe Mixamo<br/>
                     VRMA形式に変換して使用<br/>
-                    利用条件：個人利用・商用利用可
+                    利用条件：個人利用・商用利用可<br/>
+                    <a href="https://www.mixamo.com/" target="_blank" rel="noopener noreferrer" style={{ color: '#4a9eff' }}>公式サイト</a>
                   </p>
                 </div>
 
                 <div style={{ marginTop: '16px' }}>
-                  <p><strong>MMDモーションデータ（17種）</strong></p>
+                  <p><strong>デフォルトMMDモーションデータ（3種）</strong></p>
                   <p style={{ fontSize: '11px', color: '#aaa' }}>
                     以下のモーション作成者様の作品を使用しています：
                   </p>
                   <ul style={{ fontSize: '11px', color: '#aaa', marginLeft: '20px', marginTop: '8px' }}>
-                    <li>音街ウナ公式モーション © MTK INTERNET Co., Ltd. - 商用利用についてはガイドライン参照
-                      <br/><a href="https://otomachiuna.jp/" target="_blank" rel="noopener noreferrer" style={{ color: '#4a9eff', marginLeft: '20px' }}>公式サイト</a>
-                    </li>
-                    <li>むつごろう様 - ぼんやり待ちループ、ご機嫌ループ、会話モーション等
+                    <li>むつごろう様 - ぼんやり待ちループ、ご機嫌ループ、会話モーション
                       <br/><a href="https://3d.nicovideo.jp/users/2603791" target="_blank" rel="noopener noreferrer" style={{ color: '#4a9eff', marginLeft: '20px' }}>ニコニ立体</a>
                     </li>
-                    <li>各種MMDモーション作成者様 - 各モーションは個別の利用規約に従います</li>
                   </ul>
+                </div>
+
+                <div style={{ marginTop: '16px' }}>
+                  <p><strong>追加モーションのインポート</strong></p>
+                  <p style={{ fontSize: '11px', color: '#aaa' }}>
+                    本アプリは、ユーザーが自由にMMDモーション（.vmd / .zipファイル）をインポートできます。
+                  </p>
                   <p style={{ fontSize: '11px', color: '#aaa', marginTop: '8px' }}>
-                    モーションデータの詳細は<a href="https://3d.nicovideo.jp/" target="_blank" rel="noopener noreferrer" style={{ color: '#4a9eff' }}>ニコニ立体</a>をご確認ください。
+                    <strong>推奨モーション：</strong>
+                  </p>
+                  <ul style={{ fontSize: '11px', color: '#aaa', marginLeft: '20px', marginTop: '4px' }}>
+                    <li>音街ウナ公式モーション - 商用利用可能、自動カテゴリ認識対応
+                      <br/><a href="https://otomachiuna.jp/download/download-detail4/" target="_blank" rel="noopener noreferrer" style={{ color: '#4a9eff', marginLeft: '20px' }}>ダウンロード</a>
+                    </li>
+                    <li>その他のモーション - <a href="https://3d.nicovideo.jp/search?word_type=tag&word=MMD%E3%83%A2%E3%83%BC%E3%82%B7%E3%83%A7%E3%83%B3&sort=created_at" target="_blank" rel="noopener noreferrer" style={{ color: '#4a9eff' }}>ニコニ立体</a>で検索
+                    </li>
+                  </ul>
+                  <p style={{ fontSize: '11px', color: '#999', marginTop: '8px', fontStyle: 'italic' }}>
+                    ※ インポートしたモーションのライセンスは、各作成者の規約に従ってください
                   </p>
                 </div>
 
