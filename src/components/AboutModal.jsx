@@ -314,12 +314,12 @@ const AboutModal = ({ isOpen, onClose }) => {
                 </div>
 
                 <div style={{ marginTop: '16px' }}>
-                  <p><strong>デフォルトMMDモーションデータ（3種）</strong></p>
+                  <p><strong>デフォルトMMDモーションデータ（4種）</strong></p>
                   <p style={{ fontSize: '11px', color: '#aaa' }}>
                     以下のモーション作成者様の作品を使用しています：
                   </p>
                   <ul style={{ fontSize: '11px', color: '#aaa', marginLeft: '20px', marginTop: '8px' }}>
-                    <li>むつごろう様 - ぼんやり待ちループ、ご機嫌ループ、会話モーション
+                    <li>むつごろう様 - ぼんやり待ちループ、ご機嫌ループ、会話モーション、モデルポージング
                       <br/><a href="https://3d.nicovideo.jp/users/2603791" target="_blank" rel="noopener noreferrer" style={{ color: '#4a9eff', marginLeft: '20px' }}>ニコニ立体</a>
                     </li>
                   </ul>

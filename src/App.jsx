@@ -6469,7 +6469,7 @@ ${assistantMessage}`,
 
             <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: '14px', lineHeight: '1.6', marginBottom: '20px' }}>
               <p style={{ marginTop: 0, marginBottom: '15px' }}>
-                現在、デフォルトでは<strong>3種類のモーション</strong>しか用意されていません。<br/>
+                現在、デフォルトでは<strong>4種類のモーション</strong>しか用意されていません。<br/>
                 あなたのマスコットを<strong>最大限可愛く</strong>するために、モーションをインポートすることを強くおすすめします！
               </p>
 
