@@ -5173,7 +5173,8 @@ ${assistantMessage}`,
               //   if (chars.length > 0) {
               //     setVoiceCharacter(chars[0]);
               //   }
-              // } else if (newEngine.startsWith('mod:')) {
+              // }
+              else if (newEngine.startsWith('mod:')) {
                 // Modが選択された場合
                 const modId = newEngine.replace('mod:', '');
                 try {
