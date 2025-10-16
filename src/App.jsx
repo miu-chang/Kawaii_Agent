@@ -4,7 +4,7 @@ import aiService from './services/aiService';
 import replicateService from './services/replicateService';
 import { MOTION_LIBRARY } from './services/localMotionAI';
 import { unzip } from 'fflate';
-import moeTTSService from './services/moeTTSService'; // Hidden feature: enabled via localStorage
+// import moeTTSService from './services/moeTTSService'; // Hidden feature: enabled via localStorage
 import voicevoxService from './services/voicevoxService'; // VOICEVOX追加
 import voiceRecorder from './services/voiceRecorder';
 import speechRecognition from './services/speechRecognition';
@@ -2240,12 +2240,13 @@ function App() {
     // if (savedIntonationScale) setVoiceIntonationScale(parseFloat(savedIntonationScale));
 
     const savedTtsEngine = localStorage.getItem('ttsEngine');
-    const moeTTSEnabled = localStorage.getItem('enable_moe_tts') === 'true';
+    // const moeTTSEnabled = localStorage.getItem('enable_moe_tts') === 'true';
 
     // 有効なengineをチェック（MoeTTS有効時のみmoe-model許可）
-    const validEngines = moeTTSEnabled
-      ? ['voicevox', 'moe-model12', 'moe-model15']
-      : ['voicevox'];
+    // const validEngines = moeTTSEnabled
+    //   ? ['voicevox', 'moe-model12', 'moe-model15']
+    //   : ['voicevox'];
+    const validEngines = ['voicevox']; // MoeTTS disabled
     const engine = validEngines.includes(savedTtsEngine) ? savedTtsEngine : 'voicevox';
 
     setTtsEngine(engine);
@@ -2261,15 +2262,16 @@ function App() {
           setVoiceCharacter(defaultVoice || styles[0]);
         }
       });
-    } else if (engine.startsWith('moe-model')) {
-      const modelId = engine === 'moe-model12' ? 12 : 15;
-      moeTTSService.getCharacters(modelId).then(chars => {
-        setCharacterList(chars);
-        if (!savedVoiceCharacter && chars.length > 0) {
-          setVoiceCharacter(chars[0]);
-        }
-      });
     }
+    // else if (engine.startsWith('moe-model')) {
+    //   const modelId = engine === 'moe-model12' ? 12 : 15;
+    //   moeTTSService.getCharacters(modelId).then(chars => {
+    //     setCharacterList(chars);
+    //     if (!savedVoiceCharacter && chars.length > 0) {
+    //       setVoiceCharacter(chars[0]);
+    //     }
+    //   });
+    // }
 
     // AI初期化ボタンを表示（初回はユーザーアクション必要）
     setAiStatus('not-initialized');
@@ -2485,7 +2487,7 @@ function App() {
     }
   };
 
-  // 統合音声合成関数（VOICEVOX、MoeTTS、Modを統一的に扱う）
+  // 統合音声合成関数（VOICEVOX、Modを統一的に扱う）
   const synthesizeSpeech = async (text, options = {}) => {
     try {
       if (ttsEngine === 'voicevox') {
@@ -2498,17 +2500,19 @@ function App() {
           intonationScale: voiceIntonationScale,
           ...options
         });
-      } else if (ttsEngine.startsWith('moe-model')) {
-        // MoeTTS - 既存の実装（再生まで行う）
-        const modelId = ttsEngine === 'moe-model12' ? 12 : 15;
-        return await moeTTSService.speak(text, {
-          modelId: modelId,
-          speaker: voiceCharacter,
-          speed: voiceSpeedScale,
-          language: ttsLanguage,
-          ...options
-        });
-      } else if (ttsEngine.startsWith('mod:')) {
+      }
+      // else if (ttsEngine.startsWith('moe-model')) {
+      //   // MoeTTS - 既存の実装（再生まで行う）
+      //   const modelId = ttsEngine === 'moe-model12' ? 12 : 15;
+      //   return await moeTTSService.speak(text, {
+      //     modelId: modelId,
+      //     speaker: voiceCharacter,
+      //     speed: voiceSpeedScale,
+      //     language: ttsLanguage,
+      //     ...options
+      //   });
+      // }
+      else if (ttsEngine.startsWith('mod:')) {
         // TTS Mod - Blobを取得して再生
         const modId = ttsEngine.replace('mod:', '');
         const modService = await ttsModManager.loadMod(modId);
@@ -2795,38 +2799,40 @@ ${basePrompt}${interactionDetails}
           setIsTTSSpeaking(false);
           setCurrentSpeechText('');
           setCurrentGesture(null);
-        } else if (ttsEngine.startsWith('moe-model')) {
-          // GPT-5 nano表情生成を先に開始（TTS合成前）
-          setCurrentSpeechText(assistantMessage);
+        }
+        // else if (ttsEngine.startsWith('moe-model')) {
+        //   // GPT-5 nano表情生成を先に開始（TTS合成前）
+        //   setCurrentSpeechText(assistantMessage);
 
-          const modelId = ttsEngine === 'moe-model12' ? 12 : 15;
-          await moeTTSService.speak(assistantMessage, {
-            modelId: modelId,
-            speaker: voiceCharacter,
-            speed: 1.0,
-            language: ttsLanguage,
-            onSynthesisStart: () => {
-              setIsPreparingVoice(true);
-              setCurrentEmotion('thinking');
-              setCurrentGesture('thinking');
-            },
-            onPlaybackStart: () => {
-              console.log('[Conversation] onPlaybackStart - setting isSpeaking=true');
-              setIsPreparingVoice(false);
-              setIsSpeaking(true);
-              setIsTTSSpeaking(true);
-              setCurrentEmotion(finalEmotion);
-              setCurrentGesture('speaking');
-            },
-            onPlaybackEnd: () => {
-              console.log('[Conversation] onPlaybackEnd - setting isSpeaking=false');
-              setIsSpeaking(false);
-              setIsTTSSpeaking(false);
-              setCurrentSpeechText(''); // 発話テキストをクリア
-              setCurrentGesture(null);
-            }
-          });
-        } else if (false && ttsEngine === 'vits-uma') { // コメントアウト
+        //   const modelId = ttsEngine === 'moe-model12' ? 12 : 15;
+        //   await moeTTSService.speak(assistantMessage, {
+        //     modelId: modelId,
+        //     speaker: voiceCharacter,
+        //     speed: 1.0,
+        //     language: ttsLanguage,
+        //     onSynthesisStart: () => {
+        //       setIsPreparingVoice(true);
+        //       setCurrentEmotion('thinking');
+        //       setCurrentGesture('thinking');
+        //     },
+        //     onPlaybackStart: () => {
+        //       console.log('[Conversation] onPlaybackStart - setting isSpeaking=true');
+        //       setIsPreparingVoice(false);
+        //       setIsSpeaking(true);
+        //       setIsTTSSpeaking(true);
+        //       setCurrentEmotion(finalEmotion);
+        //       setCurrentGesture('speaking');
+        //     },
+        //     onPlaybackEnd: () => {
+        //       console.log('[Conversation] onPlaybackEnd - setting isSpeaking=false');
+        //       setIsSpeaking(false);
+        //       setIsTTSSpeaking(false);
+        //       setCurrentSpeechText(''); // 発話テキストをクリア
+        //       setCurrentGesture(null);
+        //     }
+        //   });
+        // }
+        else if (false && ttsEngine === 'vits-uma') { // コメントアウト
           const character = umaVoiceService.constructor.getCharacterByJpName(voiceCharacter);
           const characterId = character ? character.id : 0;
 
@@ -2921,31 +2927,32 @@ ${basePrompt}${interactionDetails}
           setCurrentSpeechText(assistantMessage);
 
           // 音声再生
-          if (ttsEngine.startsWith('moe-model')) {
-            const modelId = ttsEngine === 'moe-model12' ? 12 : 15;
-            await moeTTSService.speak(assistantMessage, {
-              modelId: modelId,
-              speaker: voiceCharacter,
-              speed: 1.0,
-              language: ttsLanguage,
-              onSynthesisStart: () => {
-                setIsPreparingVoice(true);
-                setCurrentEmotion('thinking');
-                setCurrentGesture('thinking');
-              },
-              onPlaybackStart: () => {
-                setIsPreparingVoice(false);
-                setIsTTSSpeaking(true);
-              },
-              onPlaybackEnd: () => {
-                setIsTTSSpeaking(false);
-                setCurrentSpeechText(''); // 発話テキストをクリア
-                setCurrentEmotion(fallbackEmotion);
-                setCurrentGesture(null);
-                setIsAutoTalking(false); // 自動話しかけ終了
-              }
-            });
-          } else if (ttsEngine === 'vits-uma') {
+          // if (ttsEngine.startsWith('moe-model')) {
+          //   const modelId = ttsEngine === 'moe-model12' ? 12 : 15;
+          //   await moeTTSService.speak(assistantMessage, {
+          //     modelId: modelId,
+          //     speaker: voiceCharacter,
+          //     speed: 1.0,
+          //     language: ttsLanguage,
+          //     onSynthesisStart: () => {
+          //       setIsPreparingVoice(true);
+          //       setCurrentEmotion('thinking');
+          //       setCurrentGesture('thinking');
+          //     },
+          //     onPlaybackStart: () => {
+          //       setIsPreparingVoice(false);
+          //       setIsTTSSpeaking(true);
+          //     },
+          //     onPlaybackEnd: () => {
+          //       setIsTTSSpeaking(false);
+          //       setCurrentSpeechText(''); // 発話テキストをクリア
+          //       setCurrentEmotion(fallbackEmotion);
+          //       setCurrentGesture(null);
+          //       setIsAutoTalking(false); // 自動話しかけ終了
+          //     }
+          //   });
+          // } else
+          if (ttsEngine === 'vits-uma') {
             const character = umaVoiceService.constructor.getCharacterByJpName(voiceCharacter);
             const characterId = character ? character.id : 0;
 
@@ -3189,15 +3196,16 @@ ${basePrompt}${interactionDetails}
                 console.log('[Wake Word] Responding with:', randomResponse);
 
                 // TTS設定に応じて再生
-                if (ttsEngine.startsWith('moe-model')) {
-                  const modelId = ttsEngine === 'moe-model12' ? 12 : 15;
-                  moeTTSService.speak(randomResponse, {
-                    modelId: modelId,
-                    speaker: voiceCharacter,
-                    speed: 1.0,
-                    language: ttsLanguage
-                  });
-                } else if (ttsEngine === 'vits-uma') {
+                // if (ttsEngine.startsWith('moe-model')) {
+                //   const modelId = ttsEngine === 'moe-model12' ? 12 : 15;
+                //   moeTTSService.speak(randomResponse, {
+                //     modelId: modelId,
+                //     speaker: voiceCharacter,
+                //     speed: 1.0,
+                //     language: ttsLanguage
+                //   });
+                // } else
+                if (ttsEngine === 'vits-uma') {
                   const character = umaVoiceService.constructor.getCharacterByJpName(voiceCharacter);
                   const characterId = character ? character.id : 0;
                   umaVoiceService.speak(randomResponse, {
@@ -3726,45 +3734,46 @@ ${assistantMessage}`,
         const textChunks = splitTextForTTS(assistantMessage);
         console.log(`[TTS] Split text into ${textChunks.length} chunks`);
 
-        if (ttsEngine.startsWith('moe-model')) {
-          // Moe TTSを使用
-          const modelId = ttsEngine === 'moe-model12' ? 12 : 15;
+        // if (ttsEngine.startsWith('moe-model')) {
+        //   // Moe TTSを使用
+        //   const modelId = ttsEngine === 'moe-model12' ? 12 : 15;
 
-          // 音声合成準備開始
-          setIsPreparingVoice(true);
-          setCurrentEmotion('thinking');
-          setCurrentGesture('thinking');
+        //   // 音声合成準備開始
+        //   setIsPreparingVoice(true);
+        //   setCurrentEmotion('thinking');
+        //   setCurrentGesture('thinking');
 
-          // 音声合成を並列開始（Promiseの配列）
-          console.log('[TTS] Starting synthesis for all chunks in parallel...');
-          const synthesisPromises = textChunks.map(chunk =>
-            moeTTSService.synthesize(chunk, {
-              modelId: modelId,
-              speaker: voiceCharacter,
-              speed: 1.0,
-              language: ttsLanguage
-            })
-          );
+        //   // 音声合成を並列開始（Promiseの配列）
+        //   console.log('[TTS] Starting synthesis for all chunks in parallel...');
+        //   const synthesisPromises = textChunks.map(chunk =>
+        //     moeTTSService.synthesize(chunk, {
+        //       modelId: modelId,
+        //       speaker: voiceCharacter,
+        //       speed: 1.0,
+        //       language: ttsLanguage
+        //     })
+        //   );
 
-          // 最初のチャンクの合成完了を待って即座に再生開始
-          const firstAudioUrl = await synthesisPromises[0];
-          setIsPreparingVoice(false);
-          setIsSpeaking(true);
-          setIsTTSSpeaking(true);
-          setCurrentEmotion(fallbackEmotion);
-          setCurrentGesture('speaking');
+        //   // 最初のチャンクの合成完了を待って即座に再生開始
+        //   const firstAudioUrl = await synthesisPromises[0];
+        //   setIsPreparingVoice(false);
+        //   setIsSpeaking(true);
+        //   setIsTTSSpeaking(true);
+        //   setCurrentEmotion(fallbackEmotion);
+        //   setCurrentGesture('speaking');
 
-          console.log(`[TTS] Playing chunk 1/${textChunks.length}`);
-          await moeTTSService.playAudio(firstAudioUrl);
+        //   console.log(`[TTS] Playing chunk 1/${textChunks.length}`);
+        //   await moeTTSService.playAudio(firstAudioUrl);
 
-          // 残りのチャンクを順次再生（合成完了次第）
-          for (let i = 1; i < synthesisPromises.length; i++) {
-            const audioUrl = await synthesisPromises[i];
-            console.log(`[TTS] Playing chunk ${i + 1}/${textChunks.length}`);
-            await moeTTSService.playAudio(audioUrl);
-          }
+        //   // 残りのチャンクを順次再生（合成完了次第）
+        //   for (let i = 1; i < synthesisPromises.length; i++) {
+        //     const audioUrl = await synthesisPromises[i];
+        //     console.log(`[TTS] Playing chunk ${i + 1}/${textChunks.length}`);
+        //     await moeTTSService.playAudio(audioUrl);
+        //   }
 
-        } else if (ttsEngine === 'voicevox' || ttsEngine.startsWith('mod:')) {
+        // } else
+        if (ttsEngine === 'voicevox' || ttsEngine.startsWith('mod:')) {
           // VOICEVOX または TTS Mod
           setIsSpeaking(true);
           setIsTTSSpeaking(true);
@@ -5049,7 +5058,8 @@ ${assistantMessage}`,
             </button>
           </div>
 
-          <h4 style={{ color: '#fff', marginBottom: '10px', fontSize: '14px' }}>Google連携</h4>
+          {/* Google連携（対応予定） */}
+          {/* <h4 style={{ color: '#fff', marginBottom: '10px', fontSize: '14px' }}>Google連携</h4>
           <div style={{ marginBottom: '20px' }}>
             <button onClick={async () => {
               if (googleApiService.isAuthenticated()) {
@@ -5092,7 +5102,7 @@ ${assistantMessage}`,
                 Calendar・Gmail連携中
               </div>
             )}
-          </div>
+          </div> */}
 
           <h4 style={{ color: '#fff', marginBottom: '10px', fontSize: '14px' }}>キャラクター設定</h4>
           <div style={{ marginBottom: '10px', display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
@@ -5155,14 +5165,15 @@ ${assistantMessage}`,
                 if (styles.length > 0) {
                   setVoiceCharacter(styles[0]);
                 }
-              } else if (newEngine.startsWith('moe-model')) {
-                const modelId = newEngine === 'moe-model12' ? 12 : 15;
-                const chars = await moeTTSService.getCharacters(modelId);
-                setCharacterList(chars);
-                if (chars.length > 0) {
-                  setVoiceCharacter(chars[0]);
-                }
-              } else if (newEngine.startsWith('mod:')) {
+              }
+              // else if (newEngine.startsWith('moe-model')) {
+              //   const modelId = newEngine === 'moe-model12' ? 12 : 15;
+              //   const chars = await moeTTSService.getCharacters(modelId);
+              //   setCharacterList(chars);
+              //   if (chars.length > 0) {
+              //     setVoiceCharacter(chars[0]);
+              //   }
+              // } else if (newEngine.startsWith('mod:')) {
                 // Modが選択された場合
                 const modId = newEngine.replace('mod:', '');
                 try {
@@ -5195,12 +5206,12 @@ ${assistantMessage}`,
             }}
           >
             <option value="voicevox" style={{ background: '#2a2a2a', color: '#fff' }}>VOICEVOX (ずんだもん、四国めたん等 - 商用利用OK・高速)</option>
-            {localStorage.getItem('enable_moe_tts') === 'true' && (
+            {/* {localStorage.getItem('enable_moe_tts') === 'true' && (
               <>
                 <option value="moe-model15" style={{ background: '#2a2a2a', color: '#fff' }}>MoeTTS Umamusume (87 characters)</option>
                 <option value="moe-model12" style={{ background: '#2a2a2a', color: '#fff' }}>MoeTTS Voistock (2891 characters)</option>
               </>
-            )}
+            )} */}
             {/* インストール済みMod */}
             {installedMods.length > 0 && (
               <optgroup label="─── カスタムTTS Mods ───">
