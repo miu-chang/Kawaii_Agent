@@ -523,7 +523,6 @@ npm run dist
 
 **新しい音声**
 - VOICEVOX音声は自動検出
-- MoeTTSはlocalStorageフラグが必要
 
 ### デバッグ
 
@@ -587,8 +586,7 @@ kawaii-agent/
 │   │   ├── replicateService.js    # Replicate APIクライアント
 │   │   ├── tools.js               # Function callingツール
 │   │   ├── localMotionAI.js       # モーション制御
-│   │   ├── voicePrintService.js   # 音声分析
-│   │   └── moeTTSService.js       # MoeTTS（隠し機能）
+│   │   └── voicePrintService.js   # 音声分析
 │   └── utils/
 │       ├── vrmMotions.js          # VRMアニメーションヘルパー
 │       ├── vrmGestures.js         # ジェスチャーシステム
@@ -618,8 +616,7 @@ kawaii-agent/
 7. **tools.js** - Function callingツール定義（検索、天気、ニュース）
 8. **localMotionAI.js** - アニメーション選択用ローカルモーションAI
 9. **voicePrintService.js** - 音声フィンガープリント分析
-10. **moeTTSService.js** - MoeTTS統合（隠し、localStorage有効化）
-11. **umaVoiceService.js** - ウマ娘音声（レガシー）
+10. **umaVoiceService.js** - ウマ娘音声（レガシー）
 
 ## ライセンス
 
@@ -1299,7 +1296,6 @@ npm run dist
 
 **New Voice**
 - VOICEVOX voices auto-discovered
-- MoeTTS requires localStorage flag
 
 ### Debugging
 
@@ -1363,8 +1359,7 @@ kawaii-agent/
 │   │   ├── replicateService.js    # Replicate API client
 │   │   ├── tools.js               # Function calling tools
 │   │   ├── localMotionAI.js       # Motion control
-│   │   ├── voicePrintService.js   # Voice analysis
-│   │   └── moeTTSService.js       # MoeTTS (hidden feature)
+│   │   └── voicePrintService.js   # Voice analysis
 │   └── utils/
 │       ├── vrmMotions.js          # VRM animation helpers
 │       ├── vrmGestures.js         # Gesture system
@@ -1394,8 +1389,7 @@ kawaii-agent/
 7. **tools.js** - Function calling tool definitions (search, weather, news)
 8. **localMotionAI.js** - Local motion AI for animation selection
 9. **voicePrintService.js** - Voice fingerprint analysis
-10. **moeTTSService.js** - MoeTTS integration (hidden, localStorage-activated)
-11. **umaVoiceService.js** - Uma Musume voices (legacy)
+10. **umaVoiceService.js** - Uma Musume voices (legacy)
 
 ## License
 
@@ -2075,7 +2069,6 @@ npm run dist
 
 **新语音**
 - VOICEVOX语音自动发现
-- MoeTTS需要localStorage标志
 
 ### 调试
 
@@ -2139,8 +2132,7 @@ kawaii-agent/
 │   │   ├── replicateService.js    # Replicate API客户端
 │   │   ├── tools.js               # 函数调用工具
 │   │   ├── localMotionAI.js       # 动作控制
-│   │   ├── voicePrintService.js   # 语音分析
-│   │   └── moeTTSService.js       # MoeTTS（隐藏功能）
+│   │   └── voicePrintService.js   # 语音分析
 │   └── utils/
 │       ├── vrmMotions.js          # VRM动画辅助
 │       ├── vrmGestures.js         # 手势系统
@@ -2170,8 +2162,7 @@ kawaii-agent/
 7. **tools.js** - 函数调用工具定义（搜索、天气、新闻）
 8. **localMotionAI.js** - 动画选择的本地动作AI
 9. **voicePrintService.js** - 语音指纹分析
-10. **moeTTSService.js** - MoeTTS集成（隐藏、localStorage激活）
-11. **umaVoiceService.js** - 赛马娘语音（遗留）
+10. **umaVoiceService.js** - 赛马娘语音（遗留）
 
 ## 许可证
 
