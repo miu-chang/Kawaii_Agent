@@ -10,7 +10,11 @@
     "build:rvc": "cd rvc && ./build.sh",
     "build:all": "npm run build && npm run build:rvc",
     "electron": "electron .",
-    "dist": "npm run build:all && electron-builder"
+    "dist": "npm run build && electron-builder",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:mac-intel": "npm run build && electron-builder --mac --x64",
+    "dist:win": "npm run build && electron-builder --win --x64",
+    "dist:all": "npm run build && electron-builder --mac --win --x64"
   },
   "keywords": ["ai", "desktop-companion", "vrm", "mmd", "voicevox"],
   "author": "miu-chang (miu sekiguchi) <weiyu.illustration2002@gmail.com>",
@@ -88,8 +92,14 @@
       "notarize": false
     },
     "win": {
-      "target": ["nsis"],
-      "icon": "build/icon.ico"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "${productName}-${version}-${arch}-Setup.${ext}"
     },
     "linux": {
       "target": ["AppImage"],

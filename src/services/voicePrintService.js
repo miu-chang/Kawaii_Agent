@@ -3,7 +3,7 @@ import Meyda from 'meyda';
 class VoicePrintService {
   constructor() {
     this.voicePrints = []; // 登録済み声紋（複数サンプル）
-    this.threshold = 0.95; // 類似度の閾値（95%以上で本人判定）
+    this.threshold = 0.92; // 類似度の閾値（92%以上で本人判定）
     this.minThreshold = 0.80; // 最小類似度閾値（全サンプルでこれ以上必要）
     this.useGMM = false; // GMM使用フラグ（将来の拡張用）
     this.gmmModels = []; // GMMモデル（実験的機能）
@@ -433,12 +433,12 @@ class VoicePrintService {
       const threshold = localStorage.getItem('voicePrintThreshold');
       if (threshold) {
         const savedThreshold = parseFloat(threshold);
-        // 95%未満の古い閾値は95%に更新
+        // 92%未満の古い閾値は92%に更新
         if (savedThreshold >= 0.90) {
           this.threshold = savedThreshold;
         } else {
-          console.log(`[VoicePrint] Updating old threshold ${(savedThreshold * 100).toFixed(1)}% to 95%`);
-          this.threshold = 0.95;
+          console.log(`[VoicePrint] Updating old threshold ${(savedThreshold * 100).toFixed(1)}% to 92%`);
+          this.threshold = 0.92;
           this.saveVoicePrints();
         }
       }
