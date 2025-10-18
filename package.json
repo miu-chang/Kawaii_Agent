@@ -35,6 +35,7 @@
     "@gradio/client": "^1.19.1",
     "@mlc-ai/web-llm": "^0.2.79",
     "@pixiv/three-vrm": "^3.4.2",
+    "@pixiv/three-vrm-animation": "^3.1.0",
     "@react-three/drei": "^10.7.6",
     "@react-three/fiber": "^9.3.0",
     "@ricky0123/vad-web": "^0.0.28",

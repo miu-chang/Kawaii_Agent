@@ -40,11 +40,7 @@ module.exports = (env, argv) => {
   resolve: {
     extensions: ['.js', '.jsx'],
     alias: {
-      three: path.resolve(__dirname, 'node_modules/three'),
-      '@pixiv/three-vrm-animation': path.resolve(
-        __dirname,
-        'temp-bvh2vrma/node_modules/@pixiv/three-vrm-animation/lib/three-vrm-animation.module.js'
-      )
+      three: path.resolve(__dirname, 'node_modules/three')
     },
     fallback: {
       "path": false,
