@@ -69,16 +69,7 @@
       "src/main.js",
       "src/preload.js"
     ],
-    "extraResources": [
-      {
-        "from": "rvc/dist/rvc_convert",
-        "to": "rvc/rvc_convert"
-      },
-      {
-        "from": "public/rvc-models",
-        "to": "rvc-models"
-      }
-    ],
+    "extraResources": [],
     "mac": {
       "category": "public.app-category.entertainment",
       "icon": "build/icon.icns",
@@ -96,10 +87,26 @@
         {
           "target": "nsis",
           "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
         }
       ],
       "icon": "build/icon.ico",
       "artifactName": "${productName}-${version}-${arch}-Setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "differentialPackage": false
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-${arch}-portable.${ext}"
     },
     "linux": {
       "target": ["AppImage"],
