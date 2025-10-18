@@ -104,10 +104,27 @@ export default function VRoidModelPicker({ onSelect, onClose }) {
     try {
       setLoading(true);
       setError(null);
-      console.log('[VRoid Model Picker] Loading character license:', character.name, 'ID:', character.character_id);
+      console.log('[VRoid Model Picker] Loading character license:', character.name, 'ID:', character.id);
+      console.log('[VRoid Model Picker] Character data:', character);
 
-      // VRoid Hub要件: ライセンス情報を取得（Characterization API）
-      const characterization = await vroidApiService.getCharacterization(character.character_id);
+      // VRoid Hub要件: ライセンス情報を取得
+      // charactersレスポンスに既にライセンス情報が含まれている場合はそれを使用
+      let characterization;
+      if (character.license) {
+        // 既存のlicenseデータを使用
+        characterization = {
+          characterization: {
+            character_model_license: character.license,
+            author_name: character.character?.user?.name,
+            description: character.character?.description
+          }
+        };
+        console.log('[VRoid Model Picker] Using license from character data');
+      } else {
+        // Characterization APIから取得を試みる
+        console.log('[VRoid Model Picker] Fetching characterization from API');
+        characterization = await vroidApiService.getCharacterization(character.id);
+      }
 
       // ライセンスモーダルを表示
       setSelectedCharacter(character);

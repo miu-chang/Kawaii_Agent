@@ -180,18 +180,20 @@ export default function VRoidLicenseModal({ isOpen, character, characterization,
             <p style={{ margin: '0 0 10px 0', color: '#aaa', fontSize: '12px' }}>
               詳細な利用条件は VRoid Hub でご確認ください
             </p>
-            <a
-              href={`https://hub.vroid.com/characters/${character.character_id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                color: '#60a5fa',
-                fontSize: '12px',
-                textDecoration: 'underline'
-              }}
-            >
-              VRoid Hubでモデルを見る
-            </a>
+            {character.character?.id && (
+              <a
+                href={`https://hub.vroid.com/characters/${character.character.id}/models/${character.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  color: '#60a5fa',
+                  fontSize: '12px',
+                  textDecoration: 'underline'
+                }}
+              >
+                VRoid Hubでモデルを見る
+              </a>
+            )}
           </div>
 
           {/* 注意事項 */}
