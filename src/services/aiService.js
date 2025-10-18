@@ -1154,6 +1154,11 @@ URL・ソース名は削除`;
         return false;
       }
 
+      // 口角関連は除外（選択しない）
+      if (morphName.includes('口角広げ') || morphName.includes('口角上げ')) {
+        return false;
+      }
+
       return true;
     });
 

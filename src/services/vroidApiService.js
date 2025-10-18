@@ -121,7 +121,7 @@ class VRoidApiService {
   }
 
   /**
-   * キャラクター一覧を取得
+   * キャラクター一覧を取得（「他の人の利用OK」のモデルのみ）
    */
   async getCharacters(options = {}) {
     try {
@@ -136,6 +136,7 @@ class VRoidApiService {
         body: JSON.stringify({
           licenseKey,
           action: 'characters',
+          only_downloadable_by_others: true, // VRoid Hub要件：他の人の利用OKのみ
           ...options
         })
       });
@@ -149,6 +150,39 @@ class VRoidApiService {
       return data;
     } catch (error) {
       console.error('[VRoid API] Get characters error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * キャラクターのライセンス情報を取得（Characterization API）
+   */
+  async getCharacterization(characterId) {
+    try {
+      const licenseKey = licenseApi.getLicenseKey();
+      if (!licenseKey) {
+        throw new Error('License key not found');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/vroid`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          licenseKey,
+          action: 'characterization',
+          characterId
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to fetch characterization');
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('[VRoid API] Get characterization error:', error);
       throw error;
     }
   }

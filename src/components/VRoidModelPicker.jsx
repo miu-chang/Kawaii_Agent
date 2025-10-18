@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import vroidApiService from '../services/vroidApiService';
+import VRoidLicenseModal from './VRoidLicenseModal';
 
 /**
  * VRoid Hubからモデルを選択するコンポーネント
@@ -10,6 +11,9 @@ export default function VRoidModelPicker({ onSelect, onClose }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hasMore, setHasMore] = useState(true);
+  const [showLicenseModal, setShowLicenseModal] = useState(false);
+  const [selectedCharacter, setSelectedCharacter] = useState(null);
+  const [selectedCharacterization, setSelectedCharacterization] = useState(null);
 
   // 初期化時に認証状態を確認
   useEffect(() => {
@@ -95,22 +99,46 @@ export default function VRoidModelPicker({ onSelect, onClose }) {
     setHasMore(true);
   };
 
-  // キャラクターを選択
+  // キャラクターを選択（ライセンス確認モーダルを表示）
   const handleSelectCharacter = async (character) => {
     try {
       setLoading(true);
       setError(null);
-      console.log('[VRoid Model Picker] Loading character:', character.name, 'ID:', character.character_model_id);
+      console.log('[VRoid Model Picker] Loading character license:', character.name, 'ID:', character.character_id);
+
+      // VRoid Hub要件: ライセンス情報を取得（Characterization API）
+      const characterization = await vroidApiService.getCharacterization(character.character_id);
+
+      // ライセンスモーダルを表示
+      setSelectedCharacter(character);
+      setSelectedCharacterization(characterization);
+      setShowLicenseModal(true);
+
+    } catch (err) {
+      console.error('[VRoid Model Picker] Failed to load character license:', err);
+      setError('ライセンス情報の取得に失敗しました: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ライセンス承諾後の処理
+  const handleLicenseAccept = async () => {
+    try {
+      setShowLicenseModal(false);
+      setLoading(true);
+      setError(null);
+      console.log('[VRoid Model Picker] License accepted, loading VRM:', selectedCharacter.name);
 
       // VRMファイルのObject URLを取得
-      const vrmUrl = await vroidApiService.getVrmObjectUrl(character.character_model_id);
+      const vrmUrl = await vroidApiService.getVrmObjectUrl(selectedCharacter.character_model_id);
 
       if (onSelect) {
         onSelect({
           url: vrmUrl,
-          name: character.name,
-          id: character.character_model_id,
-          thumbnail: character.thumbnail_url
+          name: selectedCharacter.name,
+          id: selectedCharacter.character_model_id,
+          thumbnail: selectedCharacter.thumbnail_url
         });
       }
 
@@ -123,7 +151,16 @@ export default function VRoidModelPicker({ onSelect, onClose }) {
       setError('モデルの読み込みに失敗しました: ' + err.message);
     } finally {
       setLoading(false);
+      setSelectedCharacter(null);
+      setSelectedCharacterization(null);
     }
+  };
+
+  // ライセンスキャンセル
+  const handleLicenseCancel = () => {
+    setShowLicenseModal(false);
+    setSelectedCharacter(null);
+    setSelectedCharacterization(null);
   };
 
   // 次のページを読み込み
@@ -294,6 +331,15 @@ export default function VRoidModelPicker({ onSelect, onClose }) {
           </div>
         )}
       </div>
+
+      {/* VRoid Hub要件: ライセンス確認モーダル */}
+      <VRoidLicenseModal
+        isOpen={showLicenseModal}
+        character={selectedCharacter}
+        characterization={selectedCharacterization}
+        onAccept={handleLicenseAccept}
+        onCancel={handleLicenseCancel}
+      />
     </div>
   );
 }
